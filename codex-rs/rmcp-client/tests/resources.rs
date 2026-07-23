@@ -64,6 +64,7 @@ async fn resource_client() -> anyhow::Result<RmcpClient> {
                 }
                 .boxed()
             }),
+            /*send_user_input*/ None,
         )
         .await?;
 

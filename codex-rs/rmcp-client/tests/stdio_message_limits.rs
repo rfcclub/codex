@@ -118,6 +118,7 @@ async fn stdio_message_limits_preserve_legacy_local_compatibility() -> anyhow::R
                     }
                     .boxed()
                 }),
+                /*send_user_input*/ None,
             )
             .await?;
 

@@ -139,6 +139,7 @@ impl Session {
             mcp_projection,
             /*ready_selected_capability_roots*/ &[],
             Some(self.mcp_elicitation_reviewer()),
+            Some(Self::mcp_user_input_handler(self)),
         )
         .instrument(info_span!(
             "session_init.mcp_manager_init",
@@ -287,6 +288,7 @@ impl Session {
         mcp_projection: McpRuntimeProjection,
         ready_selected_capability_roots: &[SelectedCapabilityRoot],
         elicitation_reviewer: Option<ElicitationReviewerHandle>,
+        user_input_handler: Option<codex_rmcp_client::SendUserInput>,
     ) {
         let mcp_projection = self
             .project_selected_environment_mcp_servers(
@@ -301,6 +303,7 @@ impl Session {
             mcp_projection,
             ready_selected_capability_roots,
             elicitation_reviewer,
+            user_input_handler,
         );
         AuthStorageOriginator::from_client_name(&desired.originator)
             .scope(self.services.mcp_runtime.replace(input))
@@ -314,6 +317,7 @@ impl Session {
         mcp_projection: McpRuntimeProjection,
         ready_selected_capability_roots: &[SelectedCapabilityRoot],
         elicitation_reviewer: Option<ElicitationReviewerHandle>,
+        user_input_handler: Option<codex_rmcp_client::SendUserInput>,
     ) -> McpRuntimeInput {
         let auth = desired.auth.clone();
         let McpRuntimeProjection {
@@ -398,6 +402,7 @@ impl Session {
             auth_manager: Some(Arc::clone(&self.services.auth_manager)),
             elicitation_reviewer,
             elicitation_lifecycle: Some(self.mcp_elicitation_lifecycle()),
+            user_input_handler,
         }
     }
 }

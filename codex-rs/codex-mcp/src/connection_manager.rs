@@ -251,6 +251,7 @@ impl McpConnectionSet {
             auth_manager,
             elicitation_reviewer,
             elicitation_lifecycle,
+            user_input_handler,
         } = input;
         let store_mode = config.mcp_oauth_credentials_store_mode;
         let keyring_backend_kind = config.auth_keyring_backend_kind;
@@ -603,6 +604,9 @@ impl McpConnectionSet {
                 None
             };
             let has_runtime_auth = runtime_auth_provider.is_some();
+            let server_user_input_handler = (server_name == "colony-mesh")
+                .then(|| user_input_handler.clone())
+                .flatten();
             let async_managed_client = AsyncManagedClient::new(
                 server_name.clone(),
                 startup_submit_id.clone(),
@@ -631,6 +635,7 @@ impl McpConnectionSet {
                     .map(|manager| manager.auth_change_state_receiver()),
                 protocol_mode,
                 catalog_item_limit,
+                server_user_input_handler,
             );
             let defer_startup = allow_deferred_startup
                 && !tool_plugin_context.is_selected_plugin_mcp_server(&server_name)

@@ -38,6 +38,7 @@ use codex_protocol::mcp_approval_meta::TOOL_TITLE_KEY as MCP_ELICITATION_TOOL_TI
 use codex_protocol::openai_models::GuardianScope;
 use codex_protocol::openai_models::ModelInfo;
 use codex_rmcp_client::Elicitation;
+use codex_rmcp_client::SendUserInput;
 use rmcp::model::ElicitationAction;
 use rmcp::model::RequestMetaObject;
 use serde_json::Map;
@@ -98,6 +99,18 @@ impl ElicitationReviewer for GuardianMcpElicitationReviewer {
 }
 
 impl Session {
+    pub(super) fn mcp_user_input_handler(session: &Arc<Session>) -> SendUserInput {
+        let session = Arc::downgrade(session);
+        Arc::new(move |text| {
+            let session = session.clone();
+            Box::pin(async move {
+                if let Some(session) = session.upgrade() {
+                    session.route_realtime_text_input(text).await;
+                }
+            })
+        })
+    }
+
     pub(crate) async fn runtime_mcp_config(&self, config: &Config) -> McpConfig {
         self.runtime_mcp_config_and_context(config).await.0
     }
@@ -262,6 +275,7 @@ impl Session {
                 mcp_projection,
                 &ready_selected_capability_roots,
                 Some(self.mcp_elicitation_reviewer()),
+                None,
             )
             .await;
             refresh_invalidation.published = true;
@@ -748,6 +762,7 @@ impl Session {
             mcp_projection,
             &ready_selected_capability_roots,
             elicitation_reviewer,
+            None,
         )
         .await;
     }

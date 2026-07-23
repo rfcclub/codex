@@ -62,6 +62,7 @@ async fn initialize_modern_client(server: &MockServer) -> anyhow::Result<RmcpCli
                 }
                 .boxed()
             }),
+            /*send_user_input*/ None,
         )
         .await?;
 

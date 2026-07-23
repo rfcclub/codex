@@ -60,6 +60,7 @@ async fn initialize(client: &RmcpClient) -> anyhow::Result<()> {
                 }
                 .boxed()
             }),
+            /*send_user_input*/ None,
         )
         .await?;
     Ok(())

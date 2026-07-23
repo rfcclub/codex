@@ -34,6 +34,7 @@ use crate::rmcp_client::Elicitation;
 use crate::rmcp_client::ElicitationPauseState;
 use crate::rmcp_client::ElicitationResponse;
 use crate::rmcp_client::SendElicitation;
+use crate::rmcp_client::SendUserInput;
 
 const MCP_PROGRESS_TOKEN_META_KEY: &str = "progressToken";
 const MCP_ELICITATION_CREATE_METHOD: &str = "elicitation/create";
@@ -45,6 +46,13 @@ const OPENAI_ELICITATION_METHOD: &str = "openai/elicitation/create";
 enum OpenAiElicitationRequestParams {
     #[serde(rename = "form")]
     Form(OpenAiFormRequestParams),
+}
+
+const CODEX_USER_INPUT_METHOD: &str = "codex/user-input";
+
+#[derive(Deserialize)]
+struct UserInputNotificationParams {
+    text: String,
 }
 
 #[derive(Deserialize)]
@@ -65,6 +73,7 @@ pub(crate) struct ElicitationClientService {
     send_elicitation: Arc<SendElicitation>,
     pause_state: ElicitationPauseState,
     pending_verifications: Arc<Mutex<VerificationCancellations>>,
+    send_user_input: Option<SendUserInput>,
 }
 
 // A notification handler can run before its request handler. Never evict an early
@@ -98,6 +107,7 @@ impl ElicitationClientService {
         client_info: ClientConfig,
         send_elicitation: SendElicitation,
         pause_state: ElicitationPauseState,
+        send_user_input: Option<SendUserInput>,
     ) -> Self {
         let supports_openai_form = client_info
             .capabilities
@@ -130,6 +140,7 @@ impl ElicitationClientService {
             send_elicitation,
             pause_state,
             pending_verifications: Arc::default(),
+            send_user_input,
         }
     }
 
@@ -327,6 +338,16 @@ impl Service<RoleClient> for ElicitationClientService {
                     cancellations.early.insert(request_id.clone());
                 }
             }
+        }
+        if let ServerNotification::CustomNotification(notification) = &notification
+            && notification.method == CODEX_USER_INPUT_METHOD
+            && let Some(send_user_input) = &self.send_user_input
+            && let Some(params) = notification.params.as_ref()
+            && let Ok(input) = serde_json::from_value::<UserInputNotificationParams>(params.clone())
+            && !input.text.trim().is_empty()
+        {
+            send_user_input(input.text).await;
+            return Ok(());
         }
         <LoggingClientHandler as Service<RoleClient>>::handle_notification(
             &self.handler,

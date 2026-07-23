@@ -433,6 +433,7 @@ async fn legacy_tool_catalog_rejects_repeated_pagination_cursor() -> anyhow::Res
             .with_protocol_version(ProtocolVersion::V_2025_06_18),
             Some(Duration::from_secs(5)),
             Box::new(|_, _| async { Err(anyhow!("unexpected elicitation")) }.boxed()),
+            /*send_user_input*/ None,
         )
         .await?;
 
@@ -763,6 +764,7 @@ pub(crate) async fn create_test_manager_with_ready_apps_client(
             .with_protocol_version(ProtocolVersion::V_2025_06_18),
             Some(Duration::from_secs(5)),
             Box::new(|_, _| async { Err(anyhow!("unexpected elicitation")) }.boxed()),
+            /*send_user_input*/ None,
         )
         .await?;
 
@@ -4783,6 +4785,7 @@ async fn no_local_runtime_fails_local_stdio_but_keeps_local_http_server() {
             auth_manager: None,
             elicitation_reviewer: None,
             elicitation_lifecycle: None,
+            user_input_handler: None,
         },
         ElicitationRequestRouter::default(),
     )
@@ -5227,6 +5230,7 @@ async fn reconcile_reusable_server_with_mcp_config(
             auth_manager: None,
             elicitation_reviewer: None,
             elicitation_lifecycle: None,
+            user_input_handler: None,
         },
         ElicitationRequestRouter::default(),
     )
@@ -5548,6 +5552,7 @@ async fn reconciliation_reuses_connection_without_relisting_regular_tools() -> a
                 }
                 .boxed()
             }),
+            /*send_user_input*/ None,
         )
         .await?;
     let initial_tools = list_tools_for_client_uncached(
@@ -6059,6 +6064,7 @@ async fn reconciliation_replaces_connection_when_protocol_mode_changes() {
             auth_manager: None,
             elicitation_reviewer: None,
             elicitation_lifecycle: None,
+            user_input_handler: None,
         },
         ElicitationRequestRouter::default(),
     )
@@ -6117,6 +6123,7 @@ async fn reconciliation_reuses_legacy_stdio_server_when_modern_protocol_is_enabl
             auth_manager: None,
             elicitation_reviewer: None,
             elicitation_lifecycle: None,
+            user_input_handler: None,
         },
         ElicitationRequestRouter::default(),
     )
@@ -6280,6 +6287,7 @@ async fn reconciliation_replaces_closed_connections() -> anyhow::Result<()> {
             .with_protocol_version(ProtocolVersion::V_2025_06_18),
             /*timeout*/ None,
             Box::new(|_, _| async { Err(anyhow!("unexpected elicitation")) }.boxed()),
+            /*send_user_input*/ None,
         )
         .await?;
     let view = previous

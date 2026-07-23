@@ -69,6 +69,7 @@ use codex_rmcp_client::LocalStdioServerLauncher;
 use codex_rmcp_client::McpOAuthRefreshMode;
 use codex_rmcp_client::McpProtocolMode;
 use codex_rmcp_client::RmcpClient;
+use codex_rmcp_client::SendUserInput;
 use codex_rmcp_client::StdioServerLauncher;
 use codex_rmcp_client::StreamableHttpBearerToken;
 use codex_rmcp_client::StreamableHttpRedirectMode;
@@ -308,6 +309,7 @@ struct ManagedClientStartup {
     cancel_token: CancellationToken,
     startup_complete: Arc<AtomicBool>,
     server_capabilities: Arc<StdMutex<Option<serde_json::Value>>>,
+    user_input_handler: Option<SendUserInput>,
 }
 
 impl ManagedClientStartup {
@@ -339,6 +341,7 @@ impl ManagedClientStartup {
             cancel_token,
             startup_complete,
             server_capabilities,
+            user_input_handler,
         } = self.clone();
         let is_codex_apps_mcp_server = server_name == CODEX_APPS_MCP_SERVER_NAME;
         let startup_timeout = server
@@ -397,6 +400,7 @@ impl ManagedClientStartup {
                         auth_changes,
                         catalog_item_limit,
                         server_capabilities,
+                        user_input_handler,
                     },
                 )
                 .await
@@ -471,6 +475,7 @@ impl AsyncManagedClient {
         auth_changes: Option<watch::Receiver<AuthChangeState>>,
         protocol_mode: McpProtocolMode,
         catalog_item_limit: usize,
+        user_input_handler: Option<SendUserInput>,
     ) -> Self {
         let is_codex_apps_mcp_server = server_name == CODEX_APPS_MCP_SERVER_NAME;
         let reconnect_server_name = server_name.clone();
@@ -506,6 +511,7 @@ impl AsyncManagedClient {
             cancel_token: cancel_token.clone(),
             startup_complete: Arc::clone(&startup_complete),
             server_capabilities: Arc::clone(&server_capabilities),
+            user_input_handler,
         });
         let client = startup.start();
         let startup_reconnect = is_codex_apps_mcp_server.then(|| {
@@ -934,6 +940,7 @@ async fn start_server_task(
         auth_changes,
         catalog_item_limit,
         server_capabilities,
+        user_input_handler,
     } = params;
     let send_elicitation =
         elicitation_requests.make_sender(server_name.clone(), tx_event, &client_mcp_extensions);
@@ -953,7 +960,12 @@ async fn start_server_task(
     let requested_capabilities = params.capabilities.clone();
     let started_at = Instant::now();
     let initialize_result = client
-        .initialize(params, startup_timeout, send_elicitation)
+        .initialize(
+            params,
+            startup_timeout,
+            send_elicitation,
+            user_input_handler,
+        )
         .await;
     record_protocol_discovery_metrics(
         client.protocol_mode(),
@@ -1161,6 +1173,7 @@ struct StartServerTaskParams {
     client_mcp_extensions: ClientMcpExtensions,
     auth_changes: Option<watch::Receiver<AuthChangeState>>,
     catalog_item_limit: usize,
+    user_input_handler: Option<SendUserInput>,
 }
 
 #[allow(clippy::too_many_arguments)]

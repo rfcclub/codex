@@ -379,6 +379,9 @@ pub type SendElicitation = Box<
     dyn Fn(RequestId, Elicitation) -> BoxFuture<'static, Result<ElicitationResponse>> + Send + Sync,
 >;
 
+/// Receives trusted, server-originated text that Codex should submit as user input.
+pub type SendUserInput = Arc<dyn Fn(String) -> BoxFuture<'static, ()> + Send + Sync>;
+
 pub struct ToolWithConnectorId {
     pub tool: Tool,
     pub connector_id: Option<String>,
@@ -640,6 +643,7 @@ impl RmcpClient {
         params: InitializeRequestParams,
         timeout: Option<Duration>,
         send_elicitation: SendElicitation,
+        send_user_input: Option<SendUserInput>,
     ) -> Result<ServerPeerInfo> {
         let context = InitializeContext {
             timeout,

@@ -188,6 +188,7 @@ async fn modern_local_and_executor_stdio_discover_metadata_identity_and_catalogs
                     }
                     .boxed()
                 }),
+                /*send_user_input*/ None,
             )
             .await?;
 
@@ -256,6 +257,7 @@ async fn legacy_stdio_preserves_existing_protocol_marker_environment() -> anyhow
                         }
                         .boxed()
                     }),
+                    /*send_user_input*/ None,
                 )
                 .await?;
 

@@ -127,6 +127,7 @@ pub(crate) async fn initialize_client_with_timeout(
                 }
                 .boxed()
             }),
+            /*send_user_input*/ None,
         )
         .await?;
     Ok(())
@@ -165,6 +166,7 @@ pub(crate) async fn create_remote_client(
                 }
                 .boxed()
             }),
+            /*send_user_input*/ None,
         )
         .await?;
 

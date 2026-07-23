@@ -65,6 +65,7 @@ use crate::resource_origin::ResourceOrigins;
 use crate::server::EffectiveMcpServer;
 use crate::tool_catalog_cache::McpToolCatalogCache;
 use crate::tools::ToolInfo;
+use codex_rmcp_client::SendUserInput;
 
 /// Controls when one task starts its eligible MCP servers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -95,6 +96,7 @@ pub struct McpRuntimeInput {
     pub auth_manager: Option<Arc<AuthManager>>,
     pub elicitation_reviewer: Option<ElicitationReviewerHandle>,
     pub elicitation_lifecycle: Option<ElicitationLifecycle>,
+    pub user_input_handler: Option<SendUserInput>,
 }
 
 /// Owns all mutable MCP state for one Codex thread.

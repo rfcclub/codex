@@ -135,6 +135,7 @@ async fn exercise_stdio_server(
                 }
                 .boxed()
             }),
+            /*send_user_input*/ None,
         )
         .await?;
 

@@ -169,6 +169,7 @@ async fn create_client(
                 }
                 .boxed()
             }),
+            /*send_user_input*/ None,
         )
         .await?;
     Ok(client)
