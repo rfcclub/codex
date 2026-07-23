@@ -1,0 +1,28 @@
+# Generated runtime + user state
+.codex-shim/
+*.log
+*.pid
+
+# Local Codex inspection artifacts (don't ship)
+codedb.snapshot
+*.asar
+app-asar-work/
+*-bsLDOISN.js
+hooks-settings-model-*.js
+model-queries-*.js
+normalize-model-settings-*.js
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
