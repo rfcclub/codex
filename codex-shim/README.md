@@ -59,7 +59,8 @@ local:
 ## Requirements
 
 - Python 3.11+.
-- Codex CLI/Desktop installed and authenticated.
+- A `codexia` release build at `../codex-rs/target/release/codex` (or set
+  `CODEX_SHIM_CODEX_BIN` to an explicit executable).
 - One of:
   - `~/.codex-shim/models.json` with configured BYOK/upstream models;
   - a compatible JSON file passed with `--settings`;
@@ -278,6 +279,10 @@ For one-off CLI runs, use inline `-c` overrides instead of changing
 ```bash
 codex-shim codex -- "inspect this repo and summarize the architecture"
 ```
+
+In the `codexia` checkout, this command always launches the adjacent patched
+release binary rather than a `codex` found on `PATH`. To use a non-standard
+build location, set `CODEX_SHIM_CODEX_BIN=/absolute/path/to/codex`.
 
 ---
 

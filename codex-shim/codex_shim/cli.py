@@ -707,16 +707,41 @@ def ensure_started(settings_path: Path, port: int) -> None:
             raise SystemExit(code)
 
 
+def codex_binary() -> Path:
+    """Return the Codex executable built from this checkout.
+
+    The shim is vendored in the codexia branch, so launching the PATH-level
+    ``codex`` could silently bypass the MCP notification patch. An explicit
+    override remains available for development and non-standard build paths.
+    """
+    override = os.environ.get("CODEX_SHIM_CODEX_BIN")
+    if override:
+        binary = Path(override).expanduser()
+    else:
+        executable = "codex.exe" if os.name == "nt" else "codex"
+        binary = PROJECT_ROOT.parent / "codex-rs" / "target" / "release" / executable
+
+    if binary.is_file() and os.access(binary, os.X_OK):
+        return binary
+
+    source = "CODEX_SHIM_CODEX_BIN" if override else "the codexia release build"
+    raise SystemExit(
+        f"codexia binary is unavailable via {source}: {binary}. "
+        "Build it with `cargo build -p codex-cli --release` or set CODEX_SHIM_CODEX_BIN."
+    )
+
+
 def exec_codex(settings_path: Path, port: int, codex_args: list[str]) -> None:
     overrides = _override_args(settings_path, port)
     codex_args = list(codex_args or [])
     if codex_args[:1] == ["--"]:
         codex_args = codex_args[1:]
-    args = ["codex", *overrides, *codex_args]
+    binary = str(codex_binary())
+    args = [binary, *overrides, *codex_args]
     env = _with_loopback_no_proxy(os.environ.copy())
     if os.name == "nt":
         raise SystemExit(subprocess.call(args, env=env))
-    os.execvpe("codex", args, env)
+    os.execvpe(binary, args, env)
 
 
 def exec_codex_app(settings_path: Path, port: int, path: str) -> None:
