@@ -94,3 +94,7 @@ CHANGELOG.ignore.md
 # Python bytecode files
 __pycache__/
 *.pyc
+
+# Local agent and code-graph artifacts
+.serena/
+graphify-out/
