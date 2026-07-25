@@ -1,0 +1,28 @@
+scenarios:
+  - scenario: explicit-native-settings-valid-api-key-settings-load
+    status: passing
+    evidence: codex-rs/native-shim/src/settings_tests.rs::loads_a_valid_openai_compatible_route
+  - scenario: explicit-native-settings-unsupported-route-fails-before-serving
+    status: passing
+    evidence: codex-rs/native-shim/src/settings_tests.rs::rejects_subscription_passthrough_routes
+  - scenario: provider-entry-admission-one-provider-cannot-consume-another-provider-budget
+    status: passing
+    evidence: codex-rs/native-shim/src/admission_tests.rs::saturated_provider_does_not_block_another_provider
+  - scenario: provider-entry-admission-saturated-bounded-queue-is-rejected
+    status: passing
+    evidence: codex-rs/native-shim/src/admission_tests.rs::rejects_a_request_when_the_provider_queue_is_full
+  - scenario: catalog-and-child-isolation-launcher-starts-current-executable
+    status: passing
+    evidence: codex-rs/cli/tests/shim.rs::shim_launches_the_current_binary_without_relying_on_path
+  - scenario: catalog-and-child-isolation-child-exit-cleans-runtime-state
+    status: passing
+    evidence: codex-rs/cli/tests/shim.rs::shim_launches_the_current_binary_without_relying_on_path plus codex-rs/native-shim/src/relay_tests.rs::runtime_binds_loopback_and_stops_on_shutdown
+  - scenario: loopback-protocol-relay-openai-responses-route-is-relayed
+    status: passing
+    evidence: codex-rs/native-shim/src/relay_tests.rs::responses_relay_substitutes_the_upstream_model_and_uses_the_provider_key
+  - scenario: loopback-protocol-relay-anthropic-route-is-translated
+    status: passing
+    evidence: codex-rs/native-shim/src/relay_tests.rs::responses_relay_translates_anthropic_sse_to_responses_sse
+  - scenario: secret-safe-diagnostics-diagnostics-redact-credentials
+    status: passing
+    evidence: codex-rs/native-shim/src/relay_tests.rs::diagnostics_exposes_capacity_but_not_provider_credentials

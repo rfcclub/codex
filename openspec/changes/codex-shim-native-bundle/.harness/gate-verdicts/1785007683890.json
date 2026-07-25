@@ -1,0 +1,153 @@
+{
+  "verdict": "REVISE",
+  "trust_score": 50,
+  "risk_level": "MEDIUM",
+  "summary": "REVISE (trust_score=50, risk=MEDIUM): 1 blocking, 4 non-blocking, 0 fabricated",
+  "deterministic_findings": [
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**WHEN** settings contain a valid API-key provider entry and one model route\"",
+      "suggested_fix": "Add a test or assertion covering: **WHEN** settings contain a valid API-key provider entry and one model route",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**THEN** the resolved configuration contains that model exactly once\"",
+      "suggested_fix": "Add a test or assertion covering: **THEN** the resolved configuration contains that model exactly once",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "TEST_GAP",
+      "severity": "MEDIUM",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW202",
+      "trust_deduction": 10,
+      "evidence": "Tests appear to cover happy path only for MEDIUM risk artifact",
+      "suggested_fix": "Add negative cases, error scenarios, or edge cases",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    },
+    {
+      "type": "DATA_RISK",
+      "severity": "CRITICAL",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "AX503",
+      "trust_deduction": 25,
+      "evidence": "Migration detected but no explicit rollback plan found (requires: rollback plan/script, revert migration, or down migration)",
+      "required_fix": "Add explicit rollback/revert plan to migration",
+      "is_blocking": true
+    }
+  ],
+  "llm_findings": [],
+  "blocking_issues": [
+    {
+      "type": "DATA_RISK",
+      "severity": "CRITICAL",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "AX503",
+      "trust_deduction": 25,
+      "evidence": "Migration detected but no explicit rollback plan found (requires: rollback plan/script, revert migration, or down migration)",
+      "required_fix": "Add explicit rollback/revert plan to migration",
+      "is_blocking": true
+    }
+  ],
+  "non_blocking_issues": [
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**WHEN** settings contain a valid API-key provider entry and one model route\"",
+      "suggested_fix": "Add a test or assertion covering: **WHEN** settings contain a valid API-key provider entry and one model route",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**THEN** the resolved configuration contains that model exactly once\"",
+      "suggested_fix": "Add a test or assertion covering: **THEN** the resolved configuration contains that model exactly once",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "TEST_GAP",
+      "severity": "MEDIUM",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW202",
+      "trust_deduction": 10,
+      "evidence": "Tests appear to cover happy path only for MEDIUM risk artifact",
+      "suggested_fix": "Add negative cases, error scenarios, or edge cases",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    }
+  ],
+  "missing_evidence": [],
+  "assumptions_detected": [
+    "L2 (semantic correctness) not reviewed — no LLM reviewer registered"
+  ],
+  "advisory_notes": [],
+  "score_breakdown": {
+    "base": 100,
+    "issue_deductions": 55,
+    "missing_evidence_deductions": 0,
+    "risk_deductions": 30,
+    "overconfidence_deductions": 0,
+    "evidence_bonuses": 10,
+    "final": 25
+  },
+  "fabricated_evidence": [],
+  "next_action": "Return to producing agent with blocking_issues",
+  "version": "0.4.0",
+  "schema_version": "0.2.0",
+  "trust_memory_summary": {
+    "agent_id": "loomkit-agent",
+    "reliability_score": 50,
+    "drift_trend": "stable",
+    "review_count": 1,
+    "last_reviewed_at": 1785007683890
+  },
+  "bound_diff_sha256": "82ce2a0576cd4a28d50c44c34dbf468624e26a370de11091f692a83d48de2747",
+  "evidence_bound": {
+    "test_log_sha256": "3c34eb3261d68db0ecb42c6a766992eb82f41c9d41cadf5a17b9d12b4e9a228e",
+    "build_log_sha256": null
+  }
+}

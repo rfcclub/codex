@@ -1,0 +1,10 @@
+{
+  "change": "codex-shim-native-bundle",
+  "timestamp": "2026-07-25T21:21:33.945Z",
+  "total_scenarios": 9,
+  "passing": 9,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}

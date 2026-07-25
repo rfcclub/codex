@@ -357,6 +357,7 @@ impl Session {
             mcp_projection,
             &ready_selected_capability_roots,
             Some(self.mcp_elicitation_reviewer()),
+            Some(Self::mcp_user_input_handler(self)),
         );
         anyhow::ensure!(
             input.mcp_servers.contains_key(CODEX_APPS_MCP_SERVER_NAME),

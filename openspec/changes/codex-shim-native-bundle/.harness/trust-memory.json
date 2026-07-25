@@ -1,0 +1,18 @@
+{
+  "loomkit-agent": [
+    {
+      "ts": 1785007683890,
+      "verdict": "REVISE",
+      "trust_score": 50,
+      "risk_level": "MEDIUM",
+      "blocking_count": 1
+    },
+    {
+      "ts": 1785007695013,
+      "verdict": "REVISE",
+      "trust_score": 50,
+      "risk_level": "MEDIUM",
+      "blocking_count": 1
+    }
+  ]
+}

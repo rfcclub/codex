@@ -1,0 +1,17 @@
+{
+  "providers": [
+    {
+      "id": "release-smoke",
+      "protocol": "openai-responses",
+      "base_url": "http://127.0.0.1:9/v1",
+      "api_key": "fixture-only"
+    }
+  ],
+  "models": [
+    {
+      "slug": "release-smoke-model",
+      "upstream_model": "upstream-release-smoke-model",
+      "provider": "release-smoke"
+    }
+  ]
+}

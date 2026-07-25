@@ -386,6 +386,7 @@ def codex_rust_crate(
 
         workspace_root_test(
             name = unit_test_name,
+            args = unit_test_args,
             env = test_env,
             runfile_env = {
                 binary: "CARGO_BIN_EXE_" + Label(binary).name

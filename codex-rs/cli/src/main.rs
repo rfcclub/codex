@@ -107,6 +107,9 @@ use codex_login::is_workload_identity_selected;
 use codex_memories_write::clear_memory_roots_contents;
 use codex_models_manager::bundled_models_response;
 use codex_models_manager::manager::RefreshStrategy;
+use codex_native_shim::NativeSettings;
+use codex_native_shim::NativeShimServer;
+use codex_native_shim::catalog_for_settings;
 use codex_protocol::protocol::AskForApproval;
 use codex_protocol::user_input::UserInput;
 use codex_terminal_detection::TerminalName;
@@ -232,6 +235,9 @@ enum Subcommand {
     #[clap(hide = true)]
     ResponsesApiProxy(ResponsesApiProxyArgs),
 
+    /// Launch Codex through the native API-key model shim.
+    Shim(ShimCommand),
+
     /// Internal: relay stdio to a Unix domain socket.
     #[clap(hide = true, name = "stdio-to-uds")]
     StdioToUds(StdioToUdsCommand),
@@ -241,6 +247,30 @@ enum Subcommand {
 
     /// Inspect feature flags.
     Features(FeaturesCli),
+}
+
+#[derive(Debug, Args)]
+struct ShimCommand {
+    /// Native shim settings JSON; defaults to ~/.codex-shim/models.json.
+    #[arg(long)]
+    settings: Option<PathBuf>,
+
+    /// Loopback port; defaults to an ephemeral port.
+    #[arg(long)]
+    port: Option<u16>,
+
+    #[command(subcommand)]
+    action: Option<ShimSubcommand>,
+
+    /// Arguments passed to the child Codex process after --.
+    #[arg(last = true)]
+    child_args: Vec<std::ffi::OsString>,
+}
+
+#[derive(Debug, clap::Subcommand)]
+enum ShimSubcommand {
+    /// Validate settings and report the migration status without starting the shim.
+    Doctor,
 }
 
 #[derive(Debug, Parser)]
@@ -936,6 +966,103 @@ fn delete_action(target: &str, force: bool) -> anyhow::Result<codex_tui::Session
         false => codex_tui::DeleteConfirmation::Prompt,
     };
     Ok(codex_tui::SessionArchiveAction::Delete(confirmation))
+}
+
+async fn run_shim_command(command: ShimCommand) -> anyhow::Result<()> {
+    let settings_path = command.settings.unwrap_or_else(default_shim_settings_path);
+    let (settings_json, settings) = load_shim_settings(&settings_path)?;
+    if matches!(&command.action, Some(ShimSubcommand::Doctor)) {
+        let schema = serde_json::from_str::<serde_json::Value>(&settings_json)
+            .ok()
+            .and_then(|value| value.get("providers").cloned())
+            .filter(serde_json::Value::is_array)
+            .map(|_| "preferred provider/model schema")
+            .unwrap_or("legacy flat-model schema; migrate to providers + models");
+        println!(
+            "Native shim settings valid: {} route(s); {schema}",
+            settings.routes().len()
+        );
+        return Ok(());
+    }
+    let default_model = settings
+        .routes()
+        .first()
+        .expect("validated settings contain at least one route")
+        .slug()
+        .to_owned();
+    let catalog = catalog_for_settings(&settings)
+        .map_err(|error| anyhow::anyhow!("failed to build native shim model catalog: {error}"))?;
+    let runtime_dir = tempfile::tempdir()?;
+    let catalog_path = runtime_dir.path().join("models.json");
+    std::fs::write(&catalog_path, serde_json::to_vec(&catalog)?)?;
+    let runtime = NativeShimServer::new(Arc::new(settings))
+        .map_err(|error| anyhow::anyhow!("invalid native shim admission policy: {error}"))?
+        .start(command.port)
+        .await?;
+    let child_executable = std::env::current_exe()?;
+    let provider_base_url = format!("{}/v1", runtime.base_url());
+    let mut child = tokio::process::Command::new(child_executable);
+    child
+        .arg("-c")
+        .arg(config_string_override("model", &default_model))
+        .arg("-c")
+        .arg(config_string_override(
+            "model_provider",
+            "codex_native_shim",
+        ))
+        .arg("-c")
+        .arg(config_string_override(
+            "model_catalog_json",
+            &catalog_path.to_string_lossy(),
+        ))
+        .arg("-c")
+        .arg(config_string_override(
+            "model_providers.codex_native_shim.base_url",
+            &provider_base_url,
+        ))
+        .arg("-c")
+        .arg(config_string_override(
+            "model_providers.codex_native_shim.name",
+            "Native Codex Shim",
+        ))
+        .arg("-c")
+        .arg("model_providers.codex_native_shim.wire_api=\"responses\"")
+        .args(command.child_args);
+    let status = child.status().await?;
+    runtime.shutdown().await?;
+    drop(runtime_dir);
+    if status.success() {
+        return Ok(());
+    }
+    if let Some(code) = status.code() {
+        std::process::exit(code);
+    }
+    anyhow::bail!("native shim child terminated without an exit code")
+}
+
+fn load_shim_settings(settings_path: &std::path::Path) -> anyhow::Result<(String, NativeSettings)> {
+    let settings_json = std::fs::read_to_string(settings_path).map_err(|error| {
+        anyhow::anyhow!(
+            "failed to read native shim settings at {}: {error}",
+            settings_path.display()
+        )
+    })?;
+    let settings = NativeSettings::from_json(&settings_json)
+        .map_err(|error| anyhow::anyhow!("invalid native shim settings: {error}"))?;
+    Ok((settings_json, settings))
+}
+
+fn default_shim_settings_path() -> PathBuf {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".codex-shim")
+        .join("models.json")
+}
+
+fn config_string_override(key: &str, value: &str) -> String {
+    let value = serde_json::to_string(value).expect("serializing config override string");
+    format!("{key}={value}")
 }
 
 async fn run_debug_app_server_command(cmd: DebugAppServerCommand) -> anyhow::Result<()> {
@@ -1809,6 +1936,14 @@ async fn cli_main(
             tokio::task::spawn_blocking(move || codex_responses_api_proxy::run_main(args))
                 .await??;
         }
+        Some(Subcommand::Shim(command)) => {
+            reject_remote_mode_for_subcommand(
+                root_remote.as_deref(),
+                root_remote_auth_token_env.as_deref(),
+                "shim",
+            )?;
+            run_shim_command(command).await?;
+        }
         Some(Subcommand::StdioToUds(cmd)) => {
             reject_remote_mode_for_subcommand(
                 root_remote.as_deref(),
@@ -2285,6 +2420,7 @@ fn unsupported_subcommand_name_for_strict_config(
         Some(Subcommand::Execpolicy(_)) => Some("execpolicy"),
         Some(Subcommand::Apply(_)) => Some("apply"),
         Some(Subcommand::ResponsesApiProxy(_)) => Some("responses-api-proxy"),
+        Some(Subcommand::Shim(_)) => Some("shim"),
         Some(Subcommand::StdioToUds(_)) => Some("stdio-to-uds"),
         Some(Subcommand::Features(_)) => Some("features"),
         Some(Subcommand::TcpTunnel(_)) => Some("tcp-tunnel"),

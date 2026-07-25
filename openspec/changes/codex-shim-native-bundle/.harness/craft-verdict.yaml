@@ -1,0 +1,4 @@
+verdict: ACCEPTABLE
+must_fix: []
+nice_to_have:
+  - "Factor the repeated SSE stream forwarding loop if more upstream protocols are added."
