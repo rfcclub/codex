@@ -405,6 +405,10 @@ pub struct ConfigToml {
     /// Per-thread `config` overrides are accepted but do not reapply this (no-ops).
     pub model_catalog_json: Option<AbsolutePathBuf>,
 
+    /// Internal child-only shim extension for composed native/subscription mode.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub composed_shim_extension_json: Option<AbsolutePathBuf>,
+
     /// Deprecated: `friendly` and `pragmatic` no longer select a style.
     pub personality: Option<Personality>,
 

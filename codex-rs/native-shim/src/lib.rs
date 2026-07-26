@@ -33,4 +33,6 @@ pub use relay::NativeShimServer;
 pub use settings::ConcurrencyPolicy;
 pub use settings::NativeRoute;
 pub use settings::NativeSettings;
+pub use settings::ShimExtensionManifest;
+pub use settings::ShimExtensionRoute;
 pub use settings::UpstreamProtocol;

@@ -259,6 +259,10 @@ struct ShimCommand {
     #[arg(long)]
     port: Option<u16>,
 
+    /// Keep native subscription models and add API-key shim models to one picker.
+    #[arg(long)]
+    compose: bool,
+
     #[command(subcommand)]
     action: Option<ShimSubcommand>,
 
@@ -984,17 +988,26 @@ async fn run_shim_command(command: ShimCommand) -> anyhow::Result<()> {
         );
         return Ok(());
     }
+    let runtime_dir = tempfile::tempdir()?;
     let default_model = settings
         .routes()
         .first()
         .expect("validated settings contain at least one route")
         .slug()
         .to_owned();
-    let catalog = catalog_for_settings(&settings)
-        .map_err(|error| anyhow::anyhow!("failed to build native shim model catalog: {error}"))?;
-    let runtime_dir = tempfile::tempdir()?;
     let catalog_path = runtime_dir.path().join("models.json");
-    std::fs::write(&catalog_path, serde_json::to_vec(&catalog)?)?;
+    let extension_path = runtime_dir.path().join("composed-shim-extension.json");
+    if command.compose {
+        let extension = settings
+            .shim_extension_manifest()
+            .map_err(|error| anyhow::anyhow!("failed to build composed shim extension: {error}"))?;
+        std::fs::write(&extension_path, serde_json::to_vec(&extension)?)?;
+    } else {
+        let catalog = catalog_for_settings(&settings).map_err(|error| {
+            anyhow::anyhow!("failed to build native shim model catalog: {error}")
+        })?;
+        std::fs::write(&catalog_path, serde_json::to_vec(&catalog)?)?;
+    }
     let runtime = NativeShimServer::new(Arc::new(settings))
         .map_err(|error| anyhow::anyhow!("invalid native shim admission policy: {error}"))?
         .start(command.port)
@@ -1002,19 +1015,27 @@ async fn run_shim_command(command: ShimCommand) -> anyhow::Result<()> {
     let child_executable = std::env::current_exe()?;
     let provider_base_url = format!("{}/v1", runtime.base_url());
     let mut child = tokio::process::Command::new(child_executable);
+    if command.compose {
+        child.arg("-c").arg(config_string_override(
+            "composed_shim_extension_json",
+            &extension_path.to_string_lossy(),
+        ));
+    } else {
+        child
+            .arg("-c")
+            .arg(config_string_override("model", &default_model))
+            .arg("-c")
+            .arg(config_string_override(
+                "model_provider",
+                "codex_native_shim",
+            ))
+            .arg("-c")
+            .arg(config_string_override(
+                "model_catalog_json",
+                &catalog_path.to_string_lossy(),
+            ));
+    }
     child
-        .arg("-c")
-        .arg(config_string_override("model", &default_model))
-        .arg("-c")
-        .arg(config_string_override(
-            "model_provider",
-            "codex_native_shim",
-        ))
-        .arg("-c")
-        .arg(config_string_override(
-            "model_catalog_json",
-            &catalog_path.to_string_lossy(),
-        ))
         .arg("-c")
         .arg(config_string_override(
             "model_providers.codex_native_shim.base_url",

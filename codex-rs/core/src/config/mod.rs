@@ -1042,6 +1042,12 @@ pub struct Config {
     /// When set, this replaces the bundled catalog for the current process.
     pub model_catalog: Option<ModelsResponse>,
 
+    /// Credential-free API-key shim catalog layered over native model discovery.
+    pub composed_shim_catalog: Option<ModelsResponse>,
+
+    /// Model slugs owned by the local API-key shim in composed mode.
+    pub composed_shim_model_slugs: HashSet<String>,
+
     /// Optional verbosity control for GPT-5 models (Responses API `text.verbosity`).
     pub model_verbosity: Option<Verbosity>,
 
@@ -2210,6 +2216,62 @@ fn load_model_catalog(
     model_catalog_json
         .map(|path| load_catalog_json(&path))
         .transpose()
+}
+
+#[derive(Deserialize)]
+struct ComposedShimExtension {
+    catalog: ModelsResponse,
+    routes: Vec<ComposedShimRoute>,
+}
+
+#[derive(Deserialize)]
+struct ComposedShimRoute {
+    slug: String,
+    provider_id: String,
+}
+
+fn load_composed_shim_extension(
+    path: Option<AbsolutePathBuf>,
+) -> std::io::Result<Option<(ModelsResponse, HashSet<String>)>> {
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let extension = serde_json::from_str::<ComposedShimExtension>(&std::fs::read_to_string(&path)?)
+        .map_err(|err| {
+            std::io::Error::new(
+                ErrorKind::InvalidData,
+                format!(
+                    "failed to parse composed_shim_extension_json `{}`: {err}",
+                    path.display()
+                ),
+            )
+        })?;
+    if extension.catalog.models.is_empty() || extension.routes.is_empty() {
+        return Err(std::io::Error::new(
+            ErrorKind::InvalidData,
+            "composed_shim_extension_json must contain at least one catalog route",
+        ));
+    }
+    let mut slugs = HashSet::with_capacity(extension.routes.len());
+    let catalog_slugs = extension
+        .catalog
+        .models
+        .iter()
+        .map(|model| model.slug.as_str())
+        .collect::<HashSet<_>>();
+    for route in extension.routes {
+        if route.slug.trim().is_empty()
+            || route.provider_id.trim().is_empty()
+            || !catalog_slugs.contains(route.slug.as_str())
+            || !slugs.insert(route.slug.clone())
+        {
+            return Err(std::io::Error::new(
+                ErrorKind::InvalidData,
+                "composed_shim_extension_json contains an invalid or duplicate route slug",
+            ));
+        }
+    }
+    Ok(Some((extension.catalog, slugs)))
 }
 
 fn filter_mcp_servers_by_requirements(
@@ -4135,6 +4197,14 @@ impl Config {
 
         let check_for_update_on_startup = cfg.check_for_update_on_startup.unwrap_or(true);
         let model_catalog = load_model_catalog(cfg.model_catalog_json.clone())?;
+        let composed_shim_extension =
+            load_composed_shim_extension(cfg.composed_shim_extension_json.clone())?;
+        if composed_shim_extension.is_some() && !model_providers.contains_key("codex_native_shim") {
+            return Err(std::io::Error::new(
+                ErrorKind::InvalidData,
+                "composed_shim_extension_json requires model_providers.codex_native_shim",
+            ));
+        }
 
         let log_dir = cfg
             .log_dir
@@ -4485,6 +4555,10 @@ impl Config {
             plan_mode_reasoning_effort: cfg.plan_mode_reasoning_effort,
             model_reasoning_summary: cfg.model_reasoning_summary,
             model_catalog,
+            composed_shim_catalog: composed_shim_extension.as_ref().map(|(catalog, _)| catalog.clone()),
+            composed_shim_model_slugs: composed_shim_extension
+                .map(|(_, slugs)| slugs)
+                .unwrap_or_default(),
             model_verbosity: cfg.model_verbosity,
             chatgpt_base_url: cfg
                 .chatgpt_base_url

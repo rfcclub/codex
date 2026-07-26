@@ -69,6 +69,7 @@ use codex_login::default_client::originator;
 use codex_model_provider::create_model_provider;
 use codex_model_provider_info::ModelProviderInfo;
 use codex_model_provider_info::OPENAI_PROVIDER_ID;
+use codex_models_manager::composed_catalog::ComposedModelsManager;
 use codex_models_manager::manager::RefreshStrategy;
 use codex_models_manager::manager::SharedModelsManager;
 use codex_protocol::ThreadId;
@@ -451,14 +452,24 @@ pub fn build_models_manager(
     auth_manager: Arc<AuthManager>,
 ) -> SharedModelsManager {
     let provider = create_model_provider(config.model_provider.clone(), Some(auth_manager));
-    let manager = provider.models_manager(
+    let native_manager = provider.models_manager(
         config.codex_home.to_path_buf(),
-        config.model_catalog.clone(),
+        if config.composed_shim_catalog.is_some() {
+            None
+        } else {
+            config.model_catalog.clone()
+        },
     );
-    manager.set_api_key_model_discovery_enabled(
+    native_manager.set_api_key_model_discovery_enabled(
         config.features.enabled(Feature::ApiKeyModelDiscovery),
     );
-    manager
+    match config.composed_shim_catalog.clone() {
+        Some(shim_catalog) => Arc::new(
+            ComposedModelsManager::from_shared(native_manager, shim_catalog)
+                .expect("validated composed shim catalog must not collide at startup"),
+        ),
+        None => native_manager,
+    }
 }
 
 pub fn thread_store_from_config(

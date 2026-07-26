@@ -1,0 +1,25 @@
+{
+  "loomkit-agent": [
+    {
+      "ts": 1785030697065,
+      "verdict": "ESCALATE_TO_HUMAN",
+      "trust_score": 70,
+      "risk_level": "HIGH",
+      "blocking_count": 1
+    },
+    {
+      "ts": 1785030769361,
+      "verdict": "PASS_WITH_WARNINGS",
+      "trust_score": 80,
+      "risk_level": "HIGH",
+      "blocking_count": 0
+    },
+    {
+      "ts": 1785030807288,
+      "verdict": "PASS_WITH_WARNINGS",
+      "trust_score": 80,
+      "risk_level": "HIGH",
+      "blocking_count": 0
+    }
+  ]
+}

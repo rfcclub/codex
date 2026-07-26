@@ -1,0 +1,4 @@
+verdict: ACCEPTABLE
+must_fix: []
+nice_to_have:
+  - "During Task 3, name the concrete client-construction module after tracing the current model_provider lookup rather than retaining a broad session glob."

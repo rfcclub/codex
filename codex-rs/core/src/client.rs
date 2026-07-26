@@ -638,6 +638,31 @@ impl ModelClient {
         self
     }
 
+    /// Creates an isolated client for a turn that selected a different
+    /// configured provider. Session identity stays the same, while provider
+    /// auth and websocket state are deliberately not shared across routes.
+    pub(crate) fn for_provider(&self, provider_info: ModelProviderInfo) -> Self {
+        let state = &self.state;
+        let mut client = Self::new(
+            self.auth_manager(),
+            self.agent_identity_policy.clone(),
+            state.thread_id.clone(),
+            provider_info,
+            state.session_source.clone(),
+            state.originator.clone(),
+            state.model_verbosity,
+            state.content_item_kinds_enabled,
+            state.enable_request_compression,
+            state.include_timing_metrics,
+            state.beta_features_header.clone(),
+            state.concurrent_reasoning_summaries_enabled,
+            state.attestation_provider.clone(),
+            self.http_client_factory.clone(),
+        );
+        client.prompt_cache_key_override = self.prompt_cache_key_override.clone();
+        client
+    }
+
     fn prompt_cache_key(&self, responses_metadata: &CodexResponsesMetadata) -> String {
         if let Some(prompt_cache_key) = &self.prompt_cache_key_override {
             return prompt_cache_key.clone();

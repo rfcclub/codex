@@ -1,0 +1,106 @@
+{
+  "verdict": "PASS_WITH_WARNINGS",
+  "trust_score": 80,
+  "risk_level": "HIGH",
+  "summary": "PASS_WITH_WARNINGS (trust_score=80, risk=HIGH): 0 blocking, 3 non-blocking, 0 fabricated",
+  "deterministic_findings": [
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**GIVEN** native subscription models are available and shim settings contain\"",
+      "suggested_fix": "Add a test or assertion covering: **GIVEN** native subscription models are available and shim settings contain",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**WHEN** composed mode starts\"",
+      "suggested_fix": "Add a test or assertion covering: **WHEN** composed mode starts",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    }
+  ],
+  "llm_findings": [],
+  "blocking_issues": [],
+  "non_blocking_issues": [
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**GIVEN** native subscription models are available and shim settings contain\"",
+      "suggested_fix": "Add a test or assertion covering: **GIVEN** native subscription models are available and shim settings contain",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**WHEN** composed mode starts\"",
+      "suggested_fix": "Add a test or assertion covering: **WHEN** composed mode starts",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    }
+  ],
+  "missing_evidence": [],
+  "assumptions_detected": [
+    "L2 (semantic correctness) not reviewed — no LLM reviewer registered"
+  ],
+  "advisory_notes": [],
+  "score_breakdown": {
+    "base": 100,
+    "issue_deductions": 20,
+    "missing_evidence_deductions": 0,
+    "risk_deductions": 10,
+    "overconfidence_deductions": 0,
+    "evidence_bonuses": 10,
+    "final": 80
+  },
+  "fabricated_evidence": [],
+  "next_action": "Proceed with caution — review warnings",
+  "version": "0.4.0",
+  "schema_version": "0.2.0",
+  "trust_memory_summary": {
+    "agent_id": "loomkit-agent",
+    "reliability_score": 65,
+    "drift_trend": "stable",
+    "review_count": 2,
+    "last_reviewed_at": 1785030769361
+  },
+  "bound_diff_sha256": "cf14dcfc53386f37903777e1532da82b5a75abfc4de60105d05d703786da8275",
+  "evidence_bound": {
+    "test_log_sha256": "49c2b3301a41e72571d27d0fb219e772a8efca1b31c233194f4dde594ea5bb1d",
+    "build_log_sha256": null
+  }
+}

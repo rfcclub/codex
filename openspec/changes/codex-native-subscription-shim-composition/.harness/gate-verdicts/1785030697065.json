@@ -1,0 +1,155 @@
+{
+  "verdict": "ESCALATE_TO_HUMAN",
+  "trust_score": 70,
+  "risk_level": "HIGH",
+  "summary": "ESCALATE_TO_HUMAN (trust_score=70, risk=HIGH): 1 blocking, 4 non-blocking, 0 fabricated",
+  "deterministic_findings": [
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**GIVEN** native subscription models are available and shim settings contain\"",
+      "suggested_fix": "Add a test or assertion covering: **GIVEN** native subscription models are available and shim settings contain",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**WHEN** composed mode starts\"",
+      "suggested_fix": "Add a test or assertion covering: **WHEN** composed mode starts",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "TEST_GAP",
+      "severity": "MEDIUM",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW202",
+      "trust_deduction": 10,
+      "evidence": "Tests appear to cover happy path only for HIGH risk artifact",
+      "suggested_fix": "Add negative cases, error scenarios, or edge cases",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "TEST_GAP",
+      "severity": "CRITICAL",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW205",
+      "required_verdict": "ESCALATE_TO_HUMAN",
+      "evidence": "Auth-related change detected but no unauthorized/forbidden test evidence",
+      "required_fix": "Add tests for unauthorized and forbidden access scenarios",
+      "is_blocking": true,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    }
+  ],
+  "llm_findings": [],
+  "blocking_issues": [
+    {
+      "type": "TEST_GAP",
+      "severity": "CRITICAL",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW205",
+      "required_verdict": "ESCALATE_TO_HUMAN",
+      "evidence": "Auth-related change detected but no unauthorized/forbidden test evidence",
+      "required_fix": "Add tests for unauthorized and forbidden access scenarios",
+      "is_blocking": true,
+      "citation_status": "not_applicable"
+    }
+  ],
+  "non_blocking_issues": [
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**GIVEN** native subscription models are available and shim settings contain\"",
+      "suggested_fix": "Add a test or assertion covering: **GIVEN** native subscription models are available and shim settings contain",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**WHEN** composed mode starts\"",
+      "suggested_fix": "Add a test or assertion covering: **WHEN** composed mode starts",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "TEST_GAP",
+      "severity": "MEDIUM",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW202",
+      "trust_deduction": 10,
+      "evidence": "Tests appear to cover happy path only for HIGH risk artifact",
+      "suggested_fix": "Add negative cases, error scenarios, or edge cases",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    }
+  ],
+  "missing_evidence": [],
+  "assumptions_detected": [
+    "L2 (semantic correctness) not reviewed — no LLM reviewer registered"
+  ],
+  "advisory_notes": [],
+  "score_breakdown": {
+    "base": 100,
+    "issue_deductions": 30,
+    "missing_evidence_deductions": 0,
+    "risk_deductions": 10,
+    "overconfidence_deductions": 0,
+    "evidence_bonuses": 10,
+    "final": 70
+  },
+  "fabricated_evidence": [],
+  "next_action": "Halt — requires human review before continuing",
+  "version": "0.4.0",
+  "schema_version": "0.2.0",
+  "trust_memory_summary": {
+    "agent_id": "loomkit-agent",
+    "reliability_score": 35,
+    "drift_trend": "stable",
+    "review_count": 1,
+    "last_reviewed_at": 1785030697065
+  },
+  "bound_diff_sha256": "02b8c56ab8dc7e4e423ee94589130cf546704bf7a45b71735bf3f10440af42af",
+  "evidence_bound": {
+    "test_log_sha256": "f8cc5275f0765c5ee2006892eaa0bfcba6565d92db87545ef9590233ca839c92",
+    "build_log_sha256": null
+  }
+}

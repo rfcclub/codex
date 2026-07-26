@@ -22,6 +22,7 @@ use codex_file_system::EnvironmentAccess;
 use codex_file_system::FileSystemEnvironmentAccessor;
 use codex_file_system::FileSystemSandboxContext;
 use codex_model_provider::SharedModelProvider;
+use codex_model_provider::create_model_provider;
 use codex_protocol::SessionId;
 use codex_protocol::ThreadId;
 use codex_protocol::config_types::ShellEnvironmentPolicy;
@@ -961,6 +962,19 @@ impl Session {
         per_turn_config.service_tier = session_configuration.step_settings.service_tier.clone();
         per_turn_config.personality = session_configuration.step_settings.personality;
         per_turn_config.approvals_reviewer = session_configuration.step_settings.approvals_reviewer;
+        let selected_model = session_configuration.step_settings.collaboration_mode.model();
+        per_turn_config.model = Some(selected_model.to_string());
+        if per_turn_config
+            .composed_shim_model_slugs
+            .contains(selected_model)
+        {
+            per_turn_config.model_provider_id = "codex_native_shim".to_string();
+            per_turn_config.model_provider = per_turn_config
+                .model_providers
+                .get("codex_native_shim")
+                .expect("composed shim provider validated during config loading")
+                .clone();
+        }
         session_configuration
             .apply_permission_profile_to_permissions(&mut per_turn_config.permissions);
         let permission_profile = session_configuration.permission_profile();
@@ -1333,7 +1347,10 @@ impl Session {
             Arc::clone(&self.services.granted_permissions_by_environment_id),
             Some(Arc::clone(&self.services.auth_manager)),
             &self.services.session_telemetry,
-            session_configuration.provider.clone(),
+            create_model_provider(
+                per_turn_config.model_provider.clone(),
+                Some(Arc::clone(&self.services.auth_manager)),
+            ),
             &session_configuration,
             multi_agent_version,
             per_turn_config,

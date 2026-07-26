@@ -1,10 +1,15 @@
 pub mod cache;
 pub mod collaboration_mode_presets;
+pub mod composed_catalog;
 pub(crate) mod config;
 pub mod manager;
 pub mod model_info;
 pub mod model_presets;
 pub mod test_support;
+
+#[cfg(test)]
+#[path = "composed_catalog_tests.rs"]
+mod composed_catalog_tests;
 
 pub use codex_protocol::auth::AuthMode;
 pub use config::ModelsManagerConfig;

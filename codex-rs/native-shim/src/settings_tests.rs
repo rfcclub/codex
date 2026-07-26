@@ -5,6 +5,38 @@ use pretty_assertions::assert_eq;
 use super::NativeSettings;
 
 #[test]
+fn shim_extension_manifest_excludes_upstream_credentials() {
+    let settings = NativeSettings::from_json(
+        r#"{
+            "providers": [{
+                "id": "private-provider",
+                "protocol": "openai-responses",
+                "base_url": "https://api.example.test/v1",
+                "api_key": "never-serialize-this"
+            }],
+            "models": [{
+                "slug": "private-model",
+                "upstream_model": "provider-private-model",
+                "provider": "private-provider"
+            }]
+        }"#,
+    )
+    .expect("valid settings");
+
+    let manifest = settings
+        .shim_extension_manifest()
+        .expect("valid settings derive a manifest");
+    let json = serde_json::to_string(&manifest).expect("manifest serializes");
+
+    assert_eq!(manifest.routes().len(), 1);
+    assert_eq!(manifest.routes()[0].slug(), "private-model");
+    assert_eq!(manifest.routes()[0].provider_id(), "private-provider");
+    assert!(!json.contains("never-serialize-this"));
+    assert!(!json.contains("api.example.test"));
+    assert!(!json.contains("provider-private-model"));
+}
+
+#[test]
 fn loads_a_valid_openai_compatible_route() {
     let settings = NativeSettings::from_json(
         r#"{

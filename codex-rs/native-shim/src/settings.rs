@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use std::fmt;
 use std::time::Duration;
 
+use codex_protocol::openai_models::ModelsResponse;
 use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
 use url::Url;
 
@@ -230,6 +232,59 @@ impl NativeSettings {
 
     pub fn routes(&self) -> &[NativeRoute] {
         &self.routes
+    }
+
+    /// Returns the child-process manifest for composed mode.
+    ///
+    /// This intentionally carries only picker identity and the non-secret
+    /// admission key. The upstream model, URL, and API key stay inside the
+    /// loopback runtime that owns upstream dispatch.
+    pub fn shim_extension_manifest(&self) -> Result<ShimExtensionManifest, serde_json::Error> {
+        Ok(ShimExtensionManifest {
+            catalog: crate::catalog::catalog_for_settings(self)?,
+            routes: self
+                .routes
+                .iter()
+                .map(|route| ShimExtensionRoute {
+                    slug: route.slug.clone(),
+                    provider_id: route.provider_id.clone(),
+                })
+                .collect(),
+        })
+    }
+}
+
+/// Credential-free route metadata passed from the shim launcher to its child.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ShimExtensionManifest {
+    catalog: ModelsResponse,
+    routes: Vec<ShimExtensionRoute>,
+}
+
+impl ShimExtensionManifest {
+    pub fn catalog(&self) -> &ModelsResponse {
+        &self.catalog
+    }
+
+    pub fn routes(&self) -> &[ShimExtensionRoute] {
+        &self.routes
+    }
+}
+
+/// A shim-owned picker entry. This type deliberately has no upstream fields.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ShimExtensionRoute {
+    slug: String,
+    provider_id: String,
+}
+
+impl ShimExtensionRoute {
+    pub fn slug(&self) -> &str {
+        &self.slug
+    }
+
+    pub fn provider_id(&self) -> &str {
+        &self.provider_id
     }
 }
 

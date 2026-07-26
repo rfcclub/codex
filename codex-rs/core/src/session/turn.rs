@@ -175,8 +175,21 @@ pub(crate) async fn run_turn(
     // Record results from hooks that finished after the previous turn before this turn's user prompt.
     drain_async_hook_results(&sess, &turn_context, /*before_user_prompt*/ true).await;
 
-    let mut client_session =
-        prewarmed_client_session.unwrap_or_else(|| sess.services.model_client.new_session());
+    let turn_model_client = sess
+        .services
+        .model_client
+        .for_provider(turn_context.config.model_provider.clone());
+    let shim_route = turn_context
+        .config
+        .composed_shim_model_slugs
+        .contains(&turn_context.model_info().slug);
+    let mut client_session = if shim_route {
+        // Startup prewarming belongs to the native session client. A shim turn
+        // must not reuse that authenticated client or its websocket state.
+        turn_model_client.new_session()
+    } else {
+        prewarmed_client_session.unwrap_or_else(|| turn_model_client.new_session())
+    };
     // TODO(ccunningham): Pre-turn compaction runs before context updates and the
     // new user message are recorded. Estimate pending incoming items (context
     // diffs/full reinjection + user input) and trigger compaction preemptively
