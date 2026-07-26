@@ -661,6 +661,16 @@ async fn regular_turn_emits_turn_started_with_trace_id_without_waiting_for_start
     sess.abort_all_tasks(TurnAbortReason::Interrupted).await;
 }
 
+#[tokio::test]
+async fn abort_all_tasks_clears_idle_turn_reservation() {
+    let (session, _turn_context, _rx) = make_session_and_context_with_rx().await;
+    *session.active_turn.lock().await = Some(ActiveTurn::default());
+
+    session.abort_all_tasks(TurnAbortReason::Replaced).await;
+
+    assert!(session.active_turn.lock().await.is_none());
+}
+
 #[test_case(SessionSource::Exec; "root")]
 #[test_case(SessionSource::SubAgent(SubAgentSource::Review); "subagent")]
 #[test_case(SessionSource::Internal(InternalSessionSource::Guardian); "guardian")]

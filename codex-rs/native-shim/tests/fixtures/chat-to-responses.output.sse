@@ -1,9 +1,14 @@
 event: response.created
 data: {"type":"response.created","response":{"id":"chatcmpl-1","object":"response","status":"in_progress"}}
 
+event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":0,"item":{"type":"message","role":"assistant","id":"chatcmpl-1","content":[{"type":"output_text","text":""}]}}
+
 event: response.output_text.delta
 data: {"type":"response.output_text.delta","output_index":0,"content_index":0,"delta":"Hello"}
 
+event: response.output_item.done
+data: {"type":"response.output_item.done","output_index":0,"item":{"type":"message","role":"assistant","id":"chatcmpl-1","content":[{"type":"output_text","text":"Hello"}]}}
+
 event: response.completed
 data: {"type":"response.completed","response":{"id":"chatcmpl-1","object":"response","status":"completed"}}
-

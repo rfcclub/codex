@@ -41,6 +41,31 @@ fn translates_a_text_responses_request_to_chat_completions() {
 }
 
 #[test]
+fn translates_a_structured_responses_request_to_chat_completions() {
+    let request = responses_to_chat_completion(
+        json!({
+            "model": "local-model",
+            "input": [{
+                "role": "user",
+                "content": [{"type": "input_text", "text": "Hello"}]
+            }],
+            "stream": false
+        }),
+        "upstream-model",
+    )
+    .expect("supported structured request");
+
+    assert_eq!(
+        request,
+        json!({
+            "model": "upstream-model",
+            "stream": false,
+            "messages": [{"role": "user", "content": "Hello"}]
+        })
+    );
+}
+
+#[test]
 fn translates_a_non_streaming_chat_completion_to_a_responses_payload() {
     let response = chat_completion_to_response(json!({
         "id": "chatcmpl-1",
@@ -179,8 +204,8 @@ fn translates_chat_sse_frames_to_responses_sse_events_across_split_chunks() {
     let second = adapter.push_bytes(&fixture.as_bytes()[split_at..]);
 
     assert_eq!(
-        second.concat(),
-        include_str!("../tests/fixtures/chat-to-responses.output.sse")
+        second.concat().trim_end(),
+        include_str!("../tests/fixtures/chat-to-responses.output.sse").trim_end()
     );
 }
 

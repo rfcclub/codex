@@ -29,6 +29,8 @@ use codex_protocol::protocol::TokenUsage;
 /// Metadata about the currently running turn.
 pub(crate) struct ActiveTurn {
     pub(crate) task: Option<RunningTask>,
+    /// The turn id that has reserved this slot while task startup awaits.
+    pub(crate) starting_turn_id: Option<String>,
     pub(crate) turn_state: Arc<Mutex<TurnState>>,
 }
 
@@ -57,6 +59,7 @@ impl Default for ActiveTurn {
     fn default() -> Self {
         Self {
             task: None,
+            starting_turn_id: None,
             turn_state: Arc::new(Mutex::new(TurnState::default())),
         }
     }

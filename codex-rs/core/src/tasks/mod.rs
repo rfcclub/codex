@@ -322,6 +322,8 @@ impl Session {
             .await;
             let turn = active.get_or_insert_with(ActiveTurn::default);
             debug_assert!(turn.task.is_none());
+            debug_assert!(turn.starting_turn_id.is_none());
+            turn.starting_turn_id = Some(turn_context.sub_id.clone());
             Arc::clone(&turn.turn_state)
         };
         turn_state.lock().await.token_usage_at_turn_start = token_usage_at_turn_start.clone();
@@ -336,8 +338,14 @@ impl Session {
         .await;
 
         let mut active = self.active_turn.lock().await;
-        let turn = active.get_or_insert_with(ActiveTurn::default);
+        let Some(turn) = active.as_mut() else {
+            return;
+        };
+        if turn.starting_turn_id.as_deref() != Some(&turn_context.sub_id) {
+            return;
+        }
         debug_assert!(turn.task.is_none());
+        turn.starting_turn_id = None;
         let agent_execution_guard = self.services.agent_control.admit_turn(
             turn_context.multi_agent_version,
             &turn_context.session_source,
@@ -561,9 +569,7 @@ impl Session {
                 )
                 .await;
             }
-            if aborted_turn {
-                active_turn_to_clear = Some(active_turn);
-            }
+            active_turn_to_clear = Some(active_turn);
         }
 
         if let Some(active_turn) = active_turn_to_clear {

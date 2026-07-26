@@ -14,15 +14,15 @@ pub fn responses_to_chat_completion(
     request: Value,
     upstream_model: &str,
 ) -> Result<Value, TranslationError> {
-    let input = request
-        .get("input")
-        .and_then(Value::as_str)
-        .ok_or(TranslationError::UnsupportedResponsesInput)?;
     let mut messages = Vec::new();
     if let Some(instructions) = request.get("instructions").and_then(Value::as_str) {
         messages.push(json!({"role": "system", "content": instructions}));
     }
-    messages.push(json!({"role": "user", "content": input}));
+    messages.extend(responses_input_to_chat_messages(
+        request
+            .get("input")
+            .ok_or(TranslationError::UnsupportedResponsesInput)?,
+    )?);
     let mut translated = serde_json::Map::new();
     translated.insert("model".to_owned(), Value::String(upstream_model.to_owned()));
     translated.insert("messages".to_owned(), Value::Array(messages));
@@ -30,6 +30,45 @@ pub fn responses_to_chat_completion(
         translated.insert("stream".to_owned(), stream.clone());
     }
     Ok(Value::Object(translated))
+}
+
+fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, TranslationError> {
+    if let Some(input) = input.as_str() {
+        return Ok(vec![json!({"role": "user", "content": input})]);
+    }
+    let input = input
+        .as_array()
+        .filter(|input| !input.is_empty())
+        .ok_or(TranslationError::UnsupportedResponsesInput)?;
+    input
+        .iter()
+        .map(|item| {
+            let role = item.get("role").and_then(Value::as_str).unwrap_or("user");
+            let content = match item.get("content") {
+                Some(Value::String(content)) => content.clone(),
+                Some(Value::Array(content)) => content
+                    .iter()
+                    .filter(|part| {
+                        matches!(
+                            part.get("type").and_then(Value::as_str),
+                            Some("input_text" | "output_text")
+                        )
+                    })
+                    .filter_map(|part| part.get("text").and_then(Value::as_str))
+                    .collect::<String>(),
+                _ => String::new(),
+            };
+            if content.is_empty() {
+                return Err(TranslationError::UnsupportedResponsesInput);
+            }
+            let role = match role {
+                "developer" | "system" => "system",
+                "assistant" => "assistant",
+                _ => "user",
+            };
+            Ok(json!({"role": role, "content": content}))
+        })
+        .collect()
 }
 
 pub fn chat_completion_to_response(completion: Value) -> Result<Value, TranslationError> {
@@ -382,6 +421,7 @@ fn text_response(id: &str, text: &str) -> Value {
 pub struct ChatSseToResponses {
     buffer: Vec<u8>,
     response_id: Option<String>,
+    output_text: String,
 }
 
 /// Incrementally converts Anthropic Messages SSE frames into the subset of
@@ -442,6 +482,7 @@ impl ChatSseToResponses {
                 .join("\n");
             if data == "[DONE]" {
                 if let Some(response_id) = self.response_id.as_deref() {
+                    output.push(output_item_done_event(response_id, &self.output_text));
                     output.push(completed_event(response_id));
                 }
                 continue;
@@ -454,6 +495,7 @@ impl ChatSseToResponses {
             {
                 self.response_id = Some(response_id.to_owned());
                 output.push(created_event(response_id));
+                output.push(output_item_added_event(response_id));
             }
             if let Some(delta) = chunk
                 .get("choices")
@@ -463,6 +505,7 @@ impl ChatSseToResponses {
                 .and_then(|delta| delta.get("content"))
                 .and_then(Value::as_str)
             {
+                self.output_text.push_str(delta);
                 output.push(text_delta_event(delta));
             }
         }
@@ -748,6 +791,21 @@ fn text_delta_event(delta: &str) -> String {
     let delta = Value::String(delta.to_owned()).to_string();
     format!(
         "event: response.output_text.delta\ndata: {{\"type\":\"response.output_text.delta\",\"output_index\":0,\"content_index\":0,\"delta\":{delta}}}\n\n"
+    )
+}
+
+fn output_item_added_event(response_id: &str) -> String {
+    let response_id = Value::String(response_id.to_owned()).to_string();
+    format!(
+        "event: response.output_item.added\ndata: {{\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{{\"type\":\"message\",\"role\":\"assistant\",\"id\":{response_id},\"content\":[{{\"type\":\"output_text\",\"text\":\"\"}}]}}}}\n\n"
+    )
+}
+
+fn output_item_done_event(response_id: &str, text: &str) -> String {
+    let response_id = Value::String(response_id.to_owned()).to_string();
+    let text = Value::String(text.to_owned()).to_string();
+    format!(
+        "event: response.output_item.done\ndata: {{\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{{\"type\":\"message\",\"role\":\"assistant\",\"id\":{response_id},\"content\":[{{\"type\":\"output_text\",\"text\":{text}}}]}}}}\n\n"
     )
 }
 
