@@ -1,0 +1,10 @@
+{
+  "change": "remote-composed-shim-catalog",
+  "timestamp": "2026-07-26T22:06:36.370Z",
+  "total_scenarios": 4,
+  "passing": 4,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}

@@ -1,0 +1,17 @@
+scenarios:
+  - scenario: remote-picker-includes-local-composed-models-composed-models-are-shown-remotely
+    test: codex-rs/tui/src/app_server_session.rs::remote_picker_merges_local_composed_models
+    command: cargo test -p codex-tui app_server_session::tests::remote_picker --lib
+    status: passing
+  - scenario: remote-picker-includes-local-composed-models-no-composed-catalog-preserves-remote-behavior
+    test: codex-rs/tui/src/app_server_session.rs::remote_picker_preserves_server_catalog_without_composed_models
+    command: cargo test -p codex-tui app_server_session::tests::remote_picker --lib
+    status: passing
+  - scenario: remote-shim-turns-receive-routing-configuration-a-selected-composed-model-routes-through-the-local-shim
+    test: codex-rs/tui/src/app_server_session.rs::composed_shim_config_is_forwarded_to_remote_thread
+    command: cargo test -p codex-tui app_server_session::tests::composed_shim_config --lib
+    status: passing
+  - scenario: remote-shim-turns-receive-routing-configuration-ordinary-remote-turns-do-not-gain-shim-overrides
+    test: codex-rs/tui/src/app_server_session.rs::ordinary_remote_thread_omits_composed_shim_config
+    command: cargo test -p codex-tui app_server_session::tests::ordinary_remote_thread_omits_composed_shim_config --lib
+    status: passing

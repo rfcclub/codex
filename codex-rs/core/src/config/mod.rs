@@ -1045,6 +1045,9 @@ pub struct Config {
     /// Credential-free API-key shim catalog layered over native model discovery.
     pub composed_shim_catalog: Option<ModelsResponse>,
 
+    /// Internal child-only manifest used to configure composed shim threads.
+    pub composed_shim_extension_json: Option<AbsolutePathBuf>,
+
     /// Model slugs owned by the local API-key shim in composed mode.
     pub composed_shim_model_slugs: HashSet<String>,
 
@@ -4556,6 +4559,7 @@ impl Config {
             model_reasoning_summary: cfg.model_reasoning_summary,
             model_catalog,
             composed_shim_catalog: composed_shim_extension.as_ref().map(|(catalog, _)| catalog.clone()),
+            composed_shim_extension_json: cfg.composed_shim_extension_json.clone(),
             composed_shim_model_slugs: composed_shim_extension
                 .map(|(_, slugs)| slugs)
                 .unwrap_or_default(),

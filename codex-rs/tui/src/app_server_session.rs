@@ -718,11 +718,18 @@ impl AppServerSession {
             },
             async { Ok(crate::collaboration_modes::list(self.request_handle()).await) },
         )?;
-        let mut available_models = models
-            .data
-            .into_iter()
-            .map(model_preset_from_api_model)
-            .collect::<Vec<_>>();
+        let mut available_models = merge_remote_model_presets(
+            models
+                .data
+                .into_iter()
+                .map(model_preset_from_api_model)
+                .collect(),
+            config
+                .composed_shim_catalog
+                .as_ref()
+                .into_iter()
+                .flat_map(|catalog| catalog.models.iter().cloned().map(ModelPreset::from)),
+        )?;
         crate::service_tier_resolution::constrain_server_service_tiers(
             &mut available_models,
             &requirements,
@@ -1926,6 +1933,26 @@ pub(crate) fn model_preset_from_api_model(model: ApiModel) -> ModelPreset {
     }
 }
 
+fn merge_remote_model_presets(
+    mut remote_models: Vec<ModelPreset>,
+    composed_models: impl IntoIterator<Item = ModelPreset>,
+) -> Result<Vec<ModelPreset>> {
+    let mut model_ids = remote_models
+        .iter()
+        .map(|model| model.model.clone())
+        .collect::<HashSet<_>>();
+    for model in composed_models {
+        if !model_ids.insert(model.model.clone()) {
+            return Err(color_eyre::eyre::eyre!(
+                "composed shim model `{}` collides with the remote app-server catalog",
+                model.model
+            ));
+        }
+        remote_models.push(model);
+    }
+    Ok(remote_models)
+}
+
 fn approvals_reviewer_override_from_config(
     config: &Config,
 ) -> Option<codex_app_server_protocol::ApprovalsReviewer> {
@@ -2013,6 +2040,33 @@ fn config_request_overrides_from_config(
     }
     if config.bypass_hook_trust {
         overrides.insert("bypass_hook_trust".to_string(), true.into());
+    }
+    if let (Some(extension_path), Some(provider)) = (
+        config.composed_shim_extension_json.as_ref(),
+        config.model_providers.get("codex_native_shim"),
+    ) {
+        overrides.insert(
+            "composed_shim_extension_json".to_string(),
+            extension_path
+                .to_path_buf()
+                .to_string_lossy()
+                .into_owned()
+                .into(),
+        );
+        if let Some(base_url) = provider.base_url.as_ref() {
+            overrides.insert(
+                "model_providers.codex_native_shim.base_url".to_string(),
+                base_url.clone().into(),
+            );
+        }
+        overrides.insert(
+            "model_providers.codex_native_shim.name".to_string(),
+            provider.name.clone().into(),
+        );
+        overrides.insert(
+            "model_providers.codex_native_shim.wire_api".to_string(),
+            provider.wire_api.to_string().into(),
+        );
     }
     Some(overrides)
 }
@@ -2619,6 +2673,8 @@ mod tests {
     use codex_app_server_protocol::Turn;
     use codex_app_server_protocol::TurnStatus;
     use codex_features::Feature;
+    use codex_model_provider_info::ModelProviderInfo;
+    use codex_protocol::config_types::Personality;
     use codex_protocol::config_types::ReasoningSummary;
     use codex_protocol::config_types::ServiceTier;
     use codex_protocol::config_types::Verbosity;
@@ -2768,6 +2824,29 @@ mod tests {
         }
     }
 
+    fn model_preset(slug: &str) -> ModelPreset {
+        ModelPreset {
+            id: slug.to_string(),
+            model: slug.to_string(),
+            display_name: slug.to_string(),
+            description: String::new(),
+            model_specialty: None,
+            default_reasoning_effort: ReasoningEffort::Medium,
+            supported_reasoning_efforts: Vec::new(),
+            supports_personality: false,
+            additional_speed_tiers: Vec::new(),
+            service_tiers: Vec::new(),
+            default_service_tier: None,
+            is_default: false,
+            upgrade: None,
+            show_in_picker: true,
+            multi_agent_version: None,
+            availability_nux: None,
+            supported_in_api: true,
+            input_modalities: Vec::new(),
+        }
+    }
+
     #[test]
     fn model_preset_from_api_model_preserves_upgrade_retirement_at() {
         let retirement_at = chrono::DateTime::parse_from_rfc3339("2030-01-01T00:00:00Z")
@@ -2803,6 +2882,101 @@ mod tests {
                 expected_upgrade(None),
             ]
         );
+    }
+
+    #[test]
+    fn remote_picker_merges_local_composed_models() {
+        let models = merge_remote_model_presets(
+            vec![model_preset("gpt-5.6")],
+            vec![model_preset("shim/one"), model_preset("shim/two")],
+        )
+        .expect("distinct local shim models should merge");
+
+        assert_eq!(
+            models
+                .iter()
+                .map(|model| model.model.as_str())
+                .collect::<Vec<_>>(),
+            vec!["gpt-5.6", "shim/one", "shim/two"]
+        );
+    }
+
+    #[test]
+    fn remote_picker_rejects_composed_model_that_collides_with_server_model() {
+        let error = merge_remote_model_presets(
+            vec![model_preset("gpt-5.6")],
+            vec![model_preset("gpt-5.6")],
+        )
+        .expect_err("a local shim model must not replace a server model");
+
+        assert!(error.to_string().contains("gpt-5.6"));
+    }
+
+    #[test]
+    fn remote_picker_preserves_server_catalog_without_composed_models() {
+        let models = merge_remote_model_presets(
+            vec![model_preset("gpt-5.6"), model_preset("gpt-5.5")],
+            Vec::new(),
+        )
+        .expect("an empty local catalog should preserve server models");
+
+        assert_eq!(
+            models
+                .iter()
+                .map(|model| model.model.as_str())
+                .collect::<Vec<_>>(),
+            vec!["gpt-5.6", "gpt-5.5"]
+        );
+    }
+
+    #[tokio::test]
+    async fn composed_shim_config_is_forwarded_to_remote_thread() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let mut config = build_config(&temp_dir).await;
+        config.composed_shim_extension_json = Some(test_path_buf("/tmp/shim-extension.json").abs());
+        config.model_providers.insert(
+            "codex_native_shim".to_string(),
+            ModelProviderInfo {
+                name: "Native Codex Shim".to_string(),
+                base_url: Some("http://127.0.0.1:9999/v1".to_string()),
+                ..ModelProviderInfo::default()
+            },
+        );
+
+        let overrides = config_request_overrides_from_config(&config)
+            .expect("thread config overrides should exist");
+
+        assert_eq!(
+            overrides.get("composed_shim_extension_json"),
+            Some(&serde_json::json!("/tmp/shim-extension.json"))
+        );
+        assert_eq!(
+            overrides.get("model_providers.codex_native_shim.base_url"),
+            Some(&serde_json::json!("http://127.0.0.1:9999/v1"))
+        );
+        assert_eq!(
+            overrides.get("model_providers.codex_native_shim.name"),
+            Some(&serde_json::json!("Native Codex Shim"))
+        );
+        assert_eq!(
+            overrides.get("model_providers.codex_native_shim.wire_api"),
+            Some(&serde_json::json!("responses"))
+        );
+        assert!(!overrides.contains_key("model_providers.codex_native_shim.env_key"));
+    }
+
+    #[tokio::test]
+    async fn ordinary_remote_thread_omits_composed_shim_config() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let config = build_config(&temp_dir).await;
+
+        let overrides = config_request_overrides_from_config(&config)
+            .expect("thread config overrides should exist");
+
+        assert!(!overrides.contains_key("composed_shim_extension_json"));
+        assert!(!overrides.contains_key("model_providers.codex_native_shim.base_url"));
+        assert!(!overrides.contains_key("model_providers.codex_native_shim.name"));
+        assert!(!overrides.contains_key("model_providers.codex_native_shim.wire_api"));
     }
 
     #[test]
