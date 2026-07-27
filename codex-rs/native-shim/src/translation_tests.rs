@@ -7,6 +7,7 @@ use super::translation::ChatSseToAnthropic;
 use super::translation::ChatSseToResponses;
 use super::translation::ResponsesSseToAnthropic;
 use super::translation::ResponsesSseToChat;
+use super::translation::TranslationError;
 use super::translation::anthropic_message_to_response;
 use super::translation::anthropic_message_to_responses_request;
 use super::translation::chat_completion_to_response;
@@ -63,6 +64,122 @@ fn translates_a_structured_responses_request_to_chat_completions() {
             "messages": [{"role": "user", "content": "Hello"}]
         })
     );
+}
+
+#[test]
+fn translates_responses_tool_history_to_chat_completions() {
+    let request = responses_to_chat_completion(
+        json!({
+            "model": "xiaomi/mimo-v2.5-pro",
+            "input": [
+                {
+                    "type": "function_call",
+                    "call_id": "call_123",
+                    "name": "exec_command",
+                    "arguments": "{\"cmd\":\"pwd\"}"
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call_123",
+                    "output": "{\"output\":\"/repo\"}"
+                },
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": "Continue."}]
+                }
+            ],
+            "stream": false
+        }),
+        "mimo-v2.5-pro",
+    )
+    .expect("supported tool history");
+
+    assert_eq!(
+        request,
+        json!({
+            "model": "mimo-v2.5-pro",
+            "stream": false,
+            "messages": [
+                {
+                    "role": "assistant",
+                    "content": "Tool call exec_command (call_123):\n{\"cmd\":\"pwd\"}"
+                },
+                {
+                    "role": "user",
+                    "content": "Tool output for call_123:\n{\"output\":\"/repo\"}"
+                },
+                {"role": "user", "content": "Continue."}
+            ]
+        })
+    );
+}
+
+#[test]
+fn translates_structured_responses_tool_history_to_anthropic_messages() {
+    let request = responses_to_anthropic_message(
+        json!({
+            "model": "claude-custom",
+            "instructions": "Be concise.",
+            "input": [
+                {
+                    "type": "function_call",
+                    "call_id": "call_123",
+                    "name": "exec_command",
+                    "arguments": "{\"cmd\":\"pwd\"}"
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call_123",
+                    "output": "{\"output\":\"/repo\"}"
+                },
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": "Continue."}]
+                }
+            ],
+            "max_output_tokens": 77,
+            "stream": false
+        }),
+        "claude-sonnet",
+    )
+    .expect("supported structured history");
+
+    assert_eq!(
+        request,
+        json!({
+            "model": "claude-sonnet",
+            "system": "Be concise.",
+            "max_tokens": 77,
+            "stream": false,
+            "messages": [
+                {
+                    "role": "assistant",
+                    "content": "Tool call exec_command (call_123):\n{\"cmd\":\"pwd\"}"
+                },
+                {
+                    "role": "user",
+                    "content": "Tool output for call_123:\n{\"output\":\"/repo\"}"
+                },
+                {"role": "user", "content": "Continue."}
+            ]
+        })
+    );
+}
+
+#[test]
+fn rejects_unknown_structured_responses_input_for_chat_completions() {
+    let error = responses_to_chat_completion(
+        json!({
+            "model": "xiaomi/mimo-v2.5-pro",
+            "input": [{"type": "computer_call", "id": "comp_123"}]
+        }),
+        "mimo-v2.5-pro",
+    )
+    .expect_err("unsupported structured input");
+
+    assert!(matches!(error, TranslationError::UnsupportedResponsesInput));
 }
 
 #[test]

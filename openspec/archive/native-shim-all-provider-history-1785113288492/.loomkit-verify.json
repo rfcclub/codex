@@ -1,0 +1,10 @@
+{
+  "change": "native-shim-all-provider-history",
+  "timestamp": "2026-07-27T00:47:39.969Z",
+  "total_scenarios": 2,
+  "passing": 2,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}

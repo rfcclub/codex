@@ -1,0 +1,11 @@
+{
+  "loomkit-agent": [
+    {
+      "ts": 1785112163572,
+      "verdict": "PASS_WITH_WARNINGS",
+      "trust_score": 75,
+      "risk_level": "MEDIUM",
+      "blocking_count": 0
+    }
+  ]
+}

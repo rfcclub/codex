@@ -1,0 +1,83 @@
+{
+  "verdict": "REVISE",
+  "trust_score": 85,
+  "risk_level": "MEDIUM",
+  "summary": "REVISE (trust_score=85, risk=MEDIUM): 1 blocking, 1 non-blocking, 0 fabricated",
+  "deterministic_findings": [
+    {
+      "type": "TEST_GAP",
+      "severity": "HIGH",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW201",
+      "trust_deduction": 15,
+      "evidence": "Implementation artifact has no test evidence",
+      "required_fix": "Provide test_log demonstrating test coverage",
+      "is_blocking": true,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    }
+  ],
+  "llm_findings": [],
+  "blocking_issues": [
+    {
+      "type": "TEST_GAP",
+      "severity": "HIGH",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW201",
+      "trust_deduction": 15,
+      "evidence": "Implementation artifact has no test evidence",
+      "required_fix": "Provide test_log demonstrating test coverage",
+      "is_blocking": true,
+      "citation_status": "not_applicable"
+    }
+  ],
+  "non_blocking_issues": [
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    }
+  ],
+  "missing_evidence": [],
+  "assumptions_detected": [
+    "L2 (semantic correctness) not reviewed — no LLM reviewer registered"
+  ],
+  "advisory_notes": [],
+  "score_breakdown": {
+    "base": 100,
+    "issue_deductions": 15,
+    "missing_evidence_deductions": 0,
+    "risk_deductions": 0,
+    "overconfidence_deductions": 0,
+    "evidence_bonuses": 0,
+    "final": 85
+  },
+  "fabricated_evidence": [],
+  "next_action": "Return to producing agent with blocking_issues",
+  "version": "0.4.0",
+  "schema_version": "0.2.0",
+  "trust_memory_summary": {
+    "agent_id": "loomkit-agent",
+    "reliability_score": 61,
+    "drift_trend": "stable",
+    "review_count": 1,
+    "last_reviewed_at": 1785113260108
+  },
+  "bound_diff_sha256": "2ab77cc95745578ef23af39719db25228ee527cc8863081d8954d8c105fa3b9e",
+  "evidence_bound": {
+    "test_log_sha256": null,
+    "build_log_sha256": null
+  }
+}

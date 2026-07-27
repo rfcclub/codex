@@ -50,7 +50,22 @@ async fn responses_relay_substitutes_the_upstream_model_and_uses_the_provider_ke
 
     let response = reqwest::Client::new()
         .post(format!("{shim_url}/v1/responses"))
-        .json(&serde_json::json!({"model":"local-sonnet", "input":"hello"}))
+        .json(&serde_json::json!({
+            "model": "local-sonnet",
+            "input": [
+                {
+                    "type": "function_call",
+                    "call_id": "call_123",
+                    "name": "exec_command",
+                    "arguments": "{\"cmd\":\"pwd\"}"
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call_123",
+                    "output": "{\"output\":\"/repo\"}"
+                }
+            ]
+        }))
         .send()
         .await
         .expect("shim response");
@@ -58,6 +73,22 @@ async fn responses_relay_substitutes_the_upstream_model_and_uses_the_provider_ke
     assert!(response.status().is_success());
     let received = received_rx.await.expect("upstream request");
     assert_eq!(received.0["model"], "upstream-sonnet");
+    assert_eq!(
+        received.0["input"],
+        serde_json::json!([
+            {
+                "type": "function_call",
+                "call_id": "call_123",
+                "name": "exec_command",
+                "arguments": "{\"cmd\":\"pwd\"}"
+            },
+            {
+                "type": "function_call_output",
+                "call_id": "call_123",
+                "output": "{\"output\":\"/repo\"}"
+            }
+        ])
+    );
     assert_eq!(received.1.as_deref(), Some("Bearer provider-secret"));
 }
 

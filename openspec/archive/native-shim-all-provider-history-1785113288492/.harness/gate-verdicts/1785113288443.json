@@ -1,0 +1,130 @@
+{
+  "verdict": "PASS_WITH_WARNINGS",
+  "trust_score": 80,
+  "risk_level": "MEDIUM",
+  "summary": "PASS_WITH_WARNINGS (trust_score=80, risk=MEDIUM): 0 blocking, 4 non-blocking, 0 fabricated",
+  "deterministic_findings": [
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**WHEN** a Responses request contains tool call, tool output, and user text\"",
+      "suggested_fix": "Add a test or assertion covering: **WHEN** a Responses request contains tool call, tool output, and user text",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**THEN** the Anthropic request has `system =` the developer instruction and\"",
+      "suggested_fix": "Add a test or assertion covering: **THEN** the Anthropic request has `system =` the developer instruction and",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "TEST_GAP",
+      "severity": "MEDIUM",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW202",
+      "trust_deduction": 10,
+      "evidence": "Tests appear to cover happy path only for MEDIUM risk artifact",
+      "suggested_fix": "Add negative cases, error scenarios, or edge cases",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    }
+  ],
+  "llm_findings": [],
+  "blocking_issues": [],
+  "non_blocking_issues": [
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**WHEN** a Responses request contains tool call, tool output, and user text\"",
+      "suggested_fix": "Add a test or assertion covering: **WHEN** a Responses request contains tool call, tool output, and user text",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "SPEC_MISMATCH",
+      "severity": "MEDIUM",
+      "layer": "L1",
+      "source": "core",
+      "rule_id": "SV101",
+      "trust_deduction": 10,
+      "evidence": "Acceptance criterion not covered at execution level: \"**THEN** the Anthropic request has `system =` the developer instruction and\"",
+      "suggested_fix": "Add a test or assertion covering: **THEN** the Anthropic request has `system =` the developer instruction and",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "TEST_GAP",
+      "severity": "MEDIUM",
+      "layer": "L4",
+      "source": "core",
+      "rule_id": "TW202",
+      "trust_deduction": 10,
+      "evidence": "Tests appear to cover happy path only for MEDIUM risk artifact",
+      "suggested_fix": "Add negative cases, error scenarios, or edge cases",
+      "is_blocking": false,
+      "citation_status": "not_applicable"
+    },
+    {
+      "type": "OTHER",
+      "severity": "LOW",
+      "layer": "L2",
+      "source": "core",
+      "evidence": "L2 unreviewed — semantic issues may exist",
+      "is_blocking": false
+    }
+  ],
+  "missing_evidence": [],
+  "assumptions_detected": [
+    "L2 (semantic correctness) not reviewed — no LLM reviewer registered"
+  ],
+  "advisory_notes": [],
+  "score_breakdown": {
+    "base": 100,
+    "issue_deductions": 30,
+    "missing_evidence_deductions": 0,
+    "risk_deductions": 0,
+    "overconfidence_deductions": 0,
+    "evidence_bonuses": 10,
+    "final": 80
+  },
+  "fabricated_evidence": [],
+  "next_action": "Proceed with caution — review warnings",
+  "version": "0.4.0",
+  "schema_version": "0.2.0",
+  "trust_memory_summary": {
+    "agent_id": "loomkit-agent",
+    "reliability_score": 74,
+    "drift_trend": "stable",
+    "review_count": 2,
+    "last_reviewed_at": 1785113288443
+  },
+  "bound_diff_sha256": "2ab77cc95745578ef23af39719db25228ee527cc8863081d8954d8c105fa3b9e",
+  "evidence_bound": {
+    "test_log_sha256": "a4e011caac0964c6b9fec9c278e3136b3e721f5302f88111855f62e3d502f168",
+    "build_log_sha256": null
+  }
+}

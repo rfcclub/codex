@@ -1,0 +1,9 @@
+scenarios:
+  - scenario: preserve-function-call-result-history-for-chat-providers-tool-result-follows-a-function-call
+    test: codex-rs/native-shim/src/translation_tests.rs::translates_responses_tool_history_to_chat_completions
+    command: cd codex-rs && just test -p codex-native-shim translates_responses_tool_history_to_chat_completions
+    status: passing
+  - scenario: reject-unsupported-structured-items-explicitly-unknown-item-type
+    test: codex-rs/native-shim/src/translation_tests.rs::rejects_unknown_structured_responses_input_for_chat_completions
+    command: cd codex-rs && just test -p codex-native-shim rejects_unknown_structured_responses_input_for_chat_completions
+    status: passing

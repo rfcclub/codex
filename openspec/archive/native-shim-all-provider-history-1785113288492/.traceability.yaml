@@ -1,0 +1,9 @@
+scenarios:
+  - scenario: structured-responses-history-works-across-native-routes-structured-tool-history-targets-an-anthropic-provider
+    test: codex-rs/native-shim/src/translation_tests.rs::translates_structured_responses_tool_history_to_anthropic_messages
+    command: cd codex-rs && just test -p codex-native-shim translates_structured_responses_tool_history_to_anthropic_messages
+    status: passing
+  - scenario: structured-responses-history-works-across-native-routes-structured-tool-history-targets-an-openai-responses-provider
+    test: codex-rs/native-shim/src/relay_tests.rs::responses_relay_substitutes_the_upstream_model_and_uses_the_provider_key
+    command: cd codex-rs && just test -p codex-native-shim responses_relay_substitutes_the_upstream_model_and_uses_the_provider_key
+    status: passing

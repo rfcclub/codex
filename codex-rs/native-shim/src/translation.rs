@@ -43,6 +43,43 @@ fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, Transla
     input
         .iter()
         .map(|item| {
+            match item.get("type").and_then(Value::as_str) {
+                Some("function_call") => {
+                    let name = item
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .filter(|name| !name.is_empty())
+                        .ok_or(TranslationError::UnsupportedResponsesInput)?;
+                    let call_id = item
+                        .get("call_id")
+                        .or_else(|| item.get("id"))
+                        .and_then(Value::as_str)
+                        .unwrap_or("unknown");
+                    let arguments = item.get("arguments").and_then(Value::as_str).unwrap_or("");
+                    return Ok(json!({
+                        "role": "assistant",
+                        "content": format!("Tool call {name} ({call_id}):\n{arguments}")
+                    }));
+                }
+                Some("function_call_output") => {
+                    let call_id = item
+                        .get("call_id")
+                        .or_else(|| item.get("id"))
+                        .and_then(Value::as_str)
+                        .unwrap_or("unknown");
+                    let output = item
+                        .get("output")
+                        .and_then(Value::as_str)
+                        .filter(|output| !output.is_empty())
+                        .ok_or(TranslationError::UnsupportedResponsesInput)?;
+                    return Ok(json!({
+                        "role": "user",
+                        "content": format!("Tool output for {call_id}:\n{output}")
+                    }));
+                }
+                Some("message") | None => {}
+                Some(_) => return Err(TranslationError::UnsupportedResponsesInput),
+            }
             let role = item.get("role").and_then(Value::as_str).unwrap_or("user");
             let content = match item.get("content") {
                 Some(Value::String(content)) => content.clone(),
@@ -296,10 +333,29 @@ pub fn responses_to_anthropic_message(
     request: Value,
     upstream_model: &str,
 ) -> Result<Value, TranslationError> {
-    let input = request
-        .get("input")
+    let messages = responses_input_to_chat_messages(
+        request
+            .get("input")
+            .ok_or(TranslationError::UnsupportedResponsesInput)?,
+    )?;
+    let mut system_parts = request
+        .get("instructions")
         .and_then(Value::as_str)
-        .ok_or(TranslationError::UnsupportedResponsesInput)?;
+        .map(|instructions| vec![instructions.to_owned()])
+        .unwrap_or_default();
+    let messages = messages
+        .into_iter()
+        .filter_map(|message| {
+            if message.get("role").and_then(Value::as_str) == Some("system") {
+                if let Some(content) = message.get("content").and_then(Value::as_str) {
+                    system_parts.push(content.to_owned());
+                }
+                None
+            } else {
+                Some(message)
+            }
+        })
+        .collect::<Vec<_>>();
     let mut translated = serde_json::Map::new();
     translated.insert("model".to_owned(), Value::String(upstream_model.to_owned()));
     translated.insert(
@@ -309,12 +365,9 @@ pub fn responses_to_anthropic_message(
             .cloned()
             .unwrap_or_else(|| json!(1024)),
     );
-    translated.insert(
-        "messages".to_owned(),
-        json!([{"role": "user", "content": input}]),
-    );
-    if let Some(instructions) = request.get("instructions").and_then(Value::as_str) {
-        translated.insert("system".to_owned(), Value::String(instructions.to_owned()));
+    translated.insert("messages".to_owned(), Value::Array(messages));
+    if !system_parts.is_empty() {
+        translated.insert("system".to_owned(), Value::String(system_parts.join("\n")));
     }
     if let Some(stream) = request.get("stream") {
         translated.insert("stream".to_owned(), stream.clone());
