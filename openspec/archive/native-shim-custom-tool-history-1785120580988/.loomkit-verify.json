@@ -1,0 +1,10 @@
+{
+  "change": "native-shim-custom-tool-history",
+  "timestamp": "2026-07-27T02:49:40.946Z",
+  "total_scenarios": 2,
+  "passing": 2,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}

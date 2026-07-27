@@ -304,6 +304,61 @@ async fn responses_relay_translates_non_streaming_requests_for_chat_completion_p
 }
 
 #[tokio::test]
+async fn responses_relay_forwards_translated_tool_declarations_to_chat_providers() {
+    let (received_tx, received_rx) = oneshot::channel();
+    let upstream = Router::new()
+        .route(
+            "/v1/chat/completions",
+            post(capture_chat_completion_request),
+        )
+        .with_state(Arc::new(tokio::sync::Mutex::new(Some(received_tx))));
+    let upstream_url = start_server(upstream).await;
+    let settings = NativeSettings::from_json(&format!(
+        r#"{{"models":[{{"model":"upstream-gpt","slug":"local-gpt","provider":"openai-chat-completions","base_url":"{upstream_url}/v1","api_key":"provider-secret"}}]}}"#
+    ))
+    .expect("settings");
+    let shim_url = start_server(
+        NativeShimServer::new(Arc::new(settings))
+            .expect("admission settings")
+            .router(),
+    )
+    .await;
+
+    let response = reqwest::Client::new()
+        .post(format!("{shim_url}/v1/responses"))
+        .json(&serde_json::json!({
+            "model": "local-gpt",
+            "input": "List files.",
+            "tools": [{
+                "type": "function",
+                "name": "list_files",
+                "description": "List files.",
+                "parameters": {"type": "object", "properties": {}}
+            }],
+            "tool_choice": "required",
+            "stream": false
+        }))
+        .send()
+        .await
+        .expect("shim response");
+
+    assert!(response.status().is_success());
+    let received = received_rx.await.expect("upstream request");
+    assert_eq!(
+        received.0["tools"],
+        serde_json::json!([{
+            "type": "function",
+            "function": {
+                "name": "list_files",
+                "description": "List files.",
+                "parameters": {"type": "object", "properties": {}}
+            }
+        }])
+    );
+    assert_eq!(received.0["tool_choice"], "required");
+}
+
+#[tokio::test]
 async fn responses_relay_translates_chat_completion_sse_to_responses_sse() {
     let upstream = Router::new().route("/v1/chat/completions", post(chat_completion_sse));
     let upstream_url = start_server(upstream).await;
@@ -709,6 +764,29 @@ async fn capture_request(
         ))
         .expect("receiver remains live");
     Json(serde_json::json!({"id":"response-1","object":"response"}))
+}
+
+async fn capture_chat_completion_request(
+    State(sender): State<RequestCaptureSender>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<Value>,
+) -> Json<Value> {
+    sender
+        .lock()
+        .await
+        .take()
+        .expect("single upstream request")
+        .send((
+            body,
+            headers
+                .get(axum::http::header::AUTHORIZATION)
+                .and_then(|value| value.to_str().ok())
+                .map(ToOwned::to_owned),
+            None,
+            None,
+        ))
+        .expect("receiver remains live");
+    chat_completion_response().await
 }
 
 async fn chat_completion_response() -> Json<Value> {

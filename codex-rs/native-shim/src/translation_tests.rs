@@ -67,6 +67,60 @@ fn translates_a_structured_responses_request_to_chat_completions() {
 }
 
 #[test]
+fn translates_responses_tools_to_chat_completions() {
+    let request = responses_to_chat_completion(
+        json!({
+            "model": "local-model",
+            "input": "Use a tool.",
+            "tools": [
+                {
+                    "type": "function",
+                    "name": "list_files",
+                    "description": "List project files.",
+                    "parameters": {"type": "object", "properties": {}}
+                },
+                {
+                    "type": "custom",
+                    "name": "exec",
+                    "description": "Run a command.",
+                    "format": {"type": "grammar", "syntax": "lark", "definition": "start: /.+/"}
+                }
+            ],
+            "tool_choice": "required",
+            "parallel_tool_calls": false
+        }),
+        "upstream-model",
+    )
+    .expect("supported tool request");
+
+    assert_eq!(
+        request,
+        json!({
+            "model": "upstream-model",
+            "messages": [{"role": "user", "content": "Use a tool."}],
+            "tools": [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "list_files",
+                        "description": "List project files.",
+                        "parameters": {"type": "object", "properties": {}}
+                    }
+                },
+                {
+                    "type": "custom",
+                    "name": "exec",
+                    "description": "Run a command.",
+                    "format": {"type": "grammar", "syntax": "lark", "definition": "start: /.+/"}
+                }
+            ],
+            "tool_choice": "required",
+            "parallel_tool_calls": false
+        })
+    );
+}
+
+#[test]
 fn translates_responses_tool_history_to_chat_completions() {
     let request = responses_to_chat_completion(
         json!({
@@ -109,6 +163,49 @@ fn translates_responses_tool_history_to_chat_completions() {
                     "role": "user",
                     "content": "Tool output for call_123:\n{\"output\":\"/repo\"}"
                 },
+                {"role": "user", "content": "Continue."}
+            ]
+        })
+    );
+}
+
+#[test]
+fn translates_custom_tool_history_with_content_items_to_chat_completions() {
+    let request = responses_to_chat_completion(
+        json!({
+            "model": "xiaomi/mimo-v2.5-pro",
+            "input": [
+                {
+                    "type": "custom_tool_call",
+                    "call_id": "call_456",
+                    "name": "exec",
+                    "input": "text('pwd')"
+                },
+                {
+                    "type": "custom_tool_call_output",
+                    "call_id": "call_456",
+                    "output": [{"type": "input_text", "text": "/repo"}]
+                },
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": "Continue."}]
+                }
+            ],
+            "stream": false
+        }),
+        "mimo-v2.5-pro",
+    )
+    .expect("supported custom tool history");
+
+    assert_eq!(
+        request,
+        json!({
+            "model": "mimo-v2.5-pro",
+            "stream": false,
+            "messages": [
+                {"role": "assistant", "content": "Tool call exec (call_456):\ntext('pwd')"},
+                {"role": "user", "content": "Tool output for call_456:\n/repo"},
                 {"role": "user", "content": "Continue."}
             ]
         })
@@ -169,6 +266,44 @@ fn translates_structured_responses_tool_history_to_anthropic_messages() {
 }
 
 #[test]
+fn translates_custom_tool_history_with_content_items_to_anthropic_messages() {
+    let request = responses_to_anthropic_message(
+        json!({
+            "model": "claude-custom",
+            "input": [
+                {
+                    "type": "custom_tool_call",
+                    "call_id": "call_456",
+                    "name": "exec",
+                    "input": "text('pwd')"
+                },
+                {
+                    "type": "custom_tool_call_output",
+                    "call_id": "call_456",
+                    "output": [{"type": "input_text", "text": "/repo"}]
+                }
+            ],
+            "stream": false
+        }),
+        "claude-sonnet",
+    )
+    .expect("supported custom tool history");
+
+    assert_eq!(
+        request,
+        json!({
+            "model": "claude-sonnet",
+            "max_tokens": 1024,
+            "stream": false,
+            "messages": [
+                {"role": "assistant", "content": "Tool call exec (call_456):\ntext('pwd')"},
+                {"role": "user", "content": "Tool output for call_456:\n/repo"}
+            ]
+        })
+    );
+}
+
+#[test]
 fn rejects_unknown_structured_responses_input_for_chat_completions() {
     let error = responses_to_chat_completion(
         json!({
@@ -205,6 +340,43 @@ fn translates_a_non_streaming_chat_completion_to_a_responses_payload() {
                 "type": "message",
                 "role": "assistant",
                 "content": [{"type": "output_text", "text": "Hello back"}]
+            }]
+        })
+    );
+}
+
+#[test]
+fn translates_a_non_streaming_chat_function_call_to_a_responses_payload() {
+    let response = chat_completion_to_response(json!({
+        "id": "chatcmpl-1",
+        "model": "upstream-model",
+        "choices": [{
+            "index": 0,
+            "finish_reason": "tool_calls",
+            "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [{
+                    "id": "call_123",
+                    "type": "function",
+                    "function": {"name": "list_files", "arguments": "{\"path\":\".\"}"}
+                }]
+            }
+        }]
+    }))
+    .expect("supported function call completion");
+
+    assert_eq!(
+        response,
+        json!({
+            "id": "chatcmpl-1",
+            "object": "response",
+            "status": "completed",
+            "output": [{
+                "type": "function_call",
+                "call_id": "call_123",
+                "name": "list_files",
+                "arguments": "{\"path\":\".\"}"
             }]
         })
     );
@@ -336,6 +508,43 @@ fn translates_chat_sse_when_a_utf8_character_is_split_between_http_chunks() {
     let events = adapter.push_bytes(&frame.as_bytes()[split_at..]);
 
     assert!(events.iter().any(|event| event.contains("\"hé\"")));
+}
+
+#[test]
+fn translates_streamed_chat_custom_tool_call_to_responses_events() {
+    let mut adapter = ChatSseToResponses::default();
+    let events = adapter.push_bytes(
+        br#"data: {"id":"chatcmpl-1","choices":[{"delta":{"role":"assistant"}}]}
+
+data: {"id":"chatcmpl-1","choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_456","type":"custom","custom":{"name":"exec","input":"pwd"}}]}}]}
+
+data: {"id":"chatcmpl-1","choices":[{"delta":{"tool_calls":[{"index":0,"custom":{"input":" && ls"}}]}}]}
+
+data: [DONE]
+
+"#,
+    );
+
+    assert!(
+        events
+            .iter()
+            .any(|event| event.contains("\"type\":\"custom_tool_call\""))
+    );
+    assert!(
+        events
+            .iter()
+            .any(|event| event.contains("\"call_id\":\"call_456\""))
+    );
+    assert!(
+        events
+            .iter()
+            .any(|event| event.contains("\"input\":\"pwd && ls\""))
+    );
+    assert!(
+        events
+            .iter()
+            .any(|event| event.contains("response.completed"))
+    );
 }
 
 #[test]

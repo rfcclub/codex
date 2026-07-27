@@ -26,10 +26,45 @@ pub fn responses_to_chat_completion(
     let mut translated = serde_json::Map::new();
     translated.insert("model".to_owned(), Value::String(upstream_model.to_owned()));
     translated.insert("messages".to_owned(), Value::Array(messages));
+    if let Some(tools) = request.get("tools") {
+        translated.insert("tools".to_owned(), responses_tools_to_chat(tools)?);
+    }
+    for field in ["tool_choice", "parallel_tool_calls"] {
+        if let Some(value) = request.get(field) {
+            translated.insert(field.to_owned(), value.clone());
+        }
+    }
     if let Some(stream) = request.get("stream") {
         translated.insert("stream".to_owned(), stream.clone());
     }
     Ok(Value::Object(translated))
+}
+
+fn responses_tools_to_chat(tools: &Value) -> Result<Value, TranslationError> {
+    let tools = tools
+        .as_array()
+        .ok_or(TranslationError::UnsupportedResponsesInput)?;
+    tools
+        .iter()
+        .map(|tool| {
+            if tool.get("type").and_then(Value::as_str) != Some("function") {
+                return Ok(tool.clone());
+            }
+            let name = tool
+                .get("name")
+                .and_then(Value::as_str)
+                .ok_or(TranslationError::UnsupportedResponsesInput)?;
+            let mut function = serde_json::Map::new();
+            function.insert("name".to_owned(), Value::String(name.to_owned()));
+            for field in ["description", "parameters", "strict"] {
+                if let Some(value) = tool.get(field) {
+                    function.insert(field.to_owned(), value.clone());
+                }
+            }
+            Ok(json!({"type": "function", "function": function}))
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(Value::Array)
 }
 
 fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, TranslationError> {
@@ -44,7 +79,7 @@ fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, Transla
         .iter()
         .map(|item| {
             match item.get("type").and_then(Value::as_str) {
-                Some("function_call") => {
+                Some("function_call") | Some("custom_tool_call") => {
                     let name = item
                         .get("name")
                         .and_then(Value::as_str)
@@ -55,22 +90,23 @@ fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, Transla
                         .or_else(|| item.get("id"))
                         .and_then(Value::as_str)
                         .unwrap_or("unknown");
-                    let arguments = item.get("arguments").and_then(Value::as_str).unwrap_or("");
+                    let input = item
+                        .get("arguments")
+                        .or_else(|| item.get("input"))
+                        .and_then(Value::as_str)
+                        .unwrap_or("");
                     return Ok(json!({
                         "role": "assistant",
-                        "content": format!("Tool call {name} ({call_id}):\n{arguments}")
+                        "content": format!("Tool call {name} ({call_id}):\n{input}")
                     }));
                 }
-                Some("function_call_output") => {
+                Some("function_call_output") | Some("custom_tool_call_output") => {
                     let call_id = item
                         .get("call_id")
                         .or_else(|| item.get("id"))
                         .and_then(Value::as_str)
                         .unwrap_or("unknown");
-                    let output = item
-                        .get("output")
-                        .and_then(Value::as_str)
-                        .filter(|output| !output.is_empty())
+                    let output = response_content_to_text(item.get("output"))
                         .ok_or(TranslationError::UnsupportedResponsesInput)?;
                     return Ok(json!({
                         "role": "user",
@@ -108,20 +144,100 @@ fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, Transla
         .collect()
 }
 
+fn response_content_to_text(content: Option<&Value>) -> Option<String> {
+    match content? {
+        Value::String(content) => (!content.is_empty()).then(|| content.clone()),
+        Value::Array(content) => {
+            let text = content
+                .iter()
+                .filter(|item| {
+                    matches!(
+                        item.get("type").and_then(Value::as_str),
+                        Some("input_text" | "output_text" | "text")
+                    )
+                })
+                .filter_map(|item| item.get("text").and_then(Value::as_str))
+                .collect::<Vec<_>>()
+                .join("\n");
+            (!text.is_empty()).then_some(text)
+        }
+        _ => None,
+    }
+}
+
 pub fn chat_completion_to_response(completion: Value) -> Result<Value, TranslationError> {
     let id = completion
         .get("id")
         .and_then(Value::as_str)
         .ok_or(TranslationError::UnsupportedChatCompletion)?;
-    let text = completion
+    let message = completion
         .get("choices")
         .and_then(Value::as_array)
         .and_then(|choices| choices.first())
         .and_then(|choice| choice.get("message"))
-        .and_then(|message| message.get("content"))
+        .ok_or(TranslationError::UnsupportedChatCompletion)?;
+    if let Some(tool_calls) = message.get("tool_calls").and_then(Value::as_array)
+        && !tool_calls.is_empty()
+    {
+        let output = tool_calls
+            .iter()
+            .map(chat_tool_call_to_response_item)
+            .collect::<Result<Vec<_>, _>>()?;
+        return Ok(response_with_output(id, output));
+    }
+    let text = message
+        .get("content")
         .and_then(Value::as_str)
         .ok_or(TranslationError::UnsupportedChatCompletion)?;
     Ok(text_response(id, text))
+}
+
+fn chat_tool_call_to_response_item(tool_call: &Value) -> Result<Value, TranslationError> {
+    let call_id = tool_call
+        .get("id")
+        .and_then(Value::as_str)
+        .ok_or(TranslationError::UnsupportedChatCompletion)?;
+    match tool_call.get("type").and_then(Value::as_str) {
+        Some("custom") => {
+            let custom = tool_call
+                .get("custom")
+                .ok_or(TranslationError::UnsupportedChatCompletion)?;
+            let name = custom
+                .get("name")
+                .and_then(Value::as_str)
+                .ok_or(TranslationError::UnsupportedChatCompletion)?;
+            let input = custom
+                .get("input")
+                .and_then(Value::as_str)
+                .ok_or(TranslationError::UnsupportedChatCompletion)?;
+            Ok(json!({
+                "type": "custom_tool_call",
+                "call_id": call_id,
+                "name": name,
+                "input": input
+            }))
+        }
+        Some("function") | None => {
+            let function = tool_call
+                .get("function")
+                .ok_or(TranslationError::UnsupportedChatCompletion)?;
+            let name = function
+                .get("name")
+                .and_then(Value::as_str)
+                .ok_or(TranslationError::UnsupportedChatCompletion)?;
+            let arguments = function
+                .get("arguments")
+                .and_then(Value::as_str)
+                .ok_or(TranslationError::UnsupportedChatCompletion)?;
+            Ok(json!({
+                "type": "function_call",
+                "call_id": call_id,
+                "name": name,
+                "arguments": arguments
+            }))
+        }
+        Some(_) => Err(TranslationError::UnsupportedChatCompletion),
+    }
 }
 
 pub fn chat_completion_to_anthropic_message(
@@ -455,15 +571,22 @@ pub fn responses_to_anthropic_message_response(response: Value) -> Result<Value,
 }
 
 fn text_response(id: &str, text: &str) -> Value {
+    response_with_output(
+        id,
+        vec![json!({
+            "type": "message",
+            "role": "assistant",
+            "content": [{"type": "output_text", "text": text}]
+        })],
+    )
+}
+
+fn response_with_output(id: &str, output: Vec<Value>) -> Value {
     json!({
         "id": id,
         "object": "response",
         "status": "completed",
-        "output": [{
-            "type": "message",
-            "role": "assistant",
-            "content": [{"type": "output_text", "text": text}]
-        }]
+        "output": output
     })
 }
 
@@ -475,6 +598,16 @@ pub struct ChatSseToResponses {
     buffer: Vec<u8>,
     response_id: Option<String>,
     output_text: String,
+    tool_calls: Vec<StreamedChatToolCall>,
+}
+
+#[derive(Default)]
+struct StreamedChatToolCall {
+    index: usize,
+    call_id: Option<String>,
+    kind: Option<String>,
+    name: Option<String>,
+    input: String,
 }
 
 /// Incrementally converts Anthropic Messages SSE frames into the subset of
@@ -535,7 +668,23 @@ impl ChatSseToResponses {
                 .join("\n");
             if data == "[DONE]" {
                 if let Some(response_id) = self.response_id.as_deref() {
-                    output.push(output_item_done_event(response_id, &self.output_text));
+                    if !self.output_text.is_empty() {
+                        output.push(output_item_done_event(response_id, &self.output_text));
+                    }
+                    for tool_call in &self.tool_calls {
+                        if let (Some(call_id), Some(kind), Some(name)) = (
+                            tool_call.call_id.as_deref(),
+                            tool_call.kind.as_deref(),
+                            tool_call.name.as_deref(),
+                        ) {
+                            output.push(tool_call_done_event(
+                                call_id,
+                                kind,
+                                name,
+                                &tool_call.input,
+                            ));
+                        }
+                    }
                     output.push(completed_event(response_id));
                 }
                 continue;
@@ -548,7 +697,6 @@ impl ChatSseToResponses {
             {
                 self.response_id = Some(response_id.to_owned());
                 output.push(created_event(response_id));
-                output.push(output_item_added_event(response_id));
             }
             if let Some(delta) = chunk
                 .get("choices")
@@ -558,8 +706,71 @@ impl ChatSseToResponses {
                 .and_then(|delta| delta.get("content"))
                 .and_then(Value::as_str)
             {
+                if self.output_text.is_empty()
+                    && let Some(response_id) = self.response_id.as_deref()
+                {
+                    output.push(output_item_added_event(response_id));
+                }
                 self.output_text.push_str(delta);
                 output.push(text_delta_event(delta));
+            }
+            if let Some(tool_calls) = chunk
+                .get("choices")
+                .and_then(Value::as_array)
+                .and_then(|choices| choices.first())
+                .and_then(|choice| choice.get("delta"))
+                .and_then(|delta| delta.get("tool_calls"))
+                .and_then(Value::as_array)
+            {
+                for tool_call_delta in tool_calls {
+                    let Some(index) = tool_call_delta
+                        .get("index")
+                        .and_then(Value::as_u64)
+                        .and_then(|index| usize::try_from(index).ok())
+                    else {
+                        continue;
+                    };
+                    let streamed_tool_call = if let Some(tool_call) = self
+                        .tool_calls
+                        .iter_mut()
+                        .find(|existing| existing.index == index)
+                    {
+                        tool_call
+                    } else {
+                        self.tool_calls.push(StreamedChatToolCall {
+                            index,
+                            ..Default::default()
+                        });
+                        let Some(tool_call) = self.tool_calls.last_mut() else {
+                            continue;
+                        };
+                        tool_call
+                    };
+                    if let Some(call_id) = tool_call_delta.get("id").and_then(Value::as_str) {
+                        streamed_tool_call.call_id = Some(call_id.to_owned());
+                    }
+                    if let Some(kind) = tool_call_delta.get("type").and_then(Value::as_str) {
+                        streamed_tool_call.kind = Some(kind.to_owned());
+                    }
+                    let payload = match streamed_tool_call.kind.as_deref() {
+                        Some("custom") => tool_call_delta.get("custom"),
+                        Some("function") | None => tool_call_delta.get("function"),
+                        Some(_) => None,
+                    };
+                    if let Some(payload) = payload {
+                        if let Some(name) = payload.get("name").and_then(Value::as_str) {
+                            streamed_tool_call.name = Some(name.to_owned());
+                        }
+                        let input = match streamed_tool_call.kind.as_deref() {
+                            Some("custom") => payload.get("input"),
+                            Some("function") | None => payload.get("arguments"),
+                            Some(_) => None,
+                        };
+                        if let Some(input) = input.and_then(Value::as_str) {
+                            streamed_tool_call.input.push_str(input);
+                        }
+                    }
+                }
             }
         }
         output
@@ -859,6 +1070,32 @@ fn output_item_done_event(response_id: &str, text: &str) -> String {
     let text = Value::String(text.to_owned()).to_string();
     format!(
         "event: response.output_item.done\ndata: {{\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{{\"type\":\"message\",\"role\":\"assistant\",\"id\":{response_id},\"content\":[{{\"type\":\"output_text\",\"text\":{text}}}]}}}}\n\n"
+    )
+}
+
+fn tool_call_done_event(call_id: &str, kind: &str, name: &str, input: &str) -> String {
+    let item = match kind {
+        "custom" => json!({
+            "type": "custom_tool_call",
+            "call_id": call_id,
+            "name": name,
+            "input": input
+        }),
+        "function" => json!({
+            "type": "function_call",
+            "call_id": call_id,
+            "name": name,
+            "arguments": input
+        }),
+        _ => return String::new(),
+    };
+    format!(
+        "event: response.output_item.done\ndata: {}\n\n",
+        json!({
+            "type": "response.output_item.done",
+            "output_index": 0,
+            "item": item
+        })
     )
 }
 

@@ -1,0 +1,9 @@
+scenarios:
+  - scenario: custom-tool-history-translates-for-text-only-provider-adapters-custom-tool-call-with-content-item-output-targets-chat-completions
+    test: codex-rs/native-shim/src/translation_tests.rs::translates_custom_tool_history_with_content_items_to_chat_completions
+    command: cd codex-rs && just test -p codex-native-shim translates_custom_tool_history_with_content_items_to_chat_completions
+    status: passing
+  - scenario: custom-tool-history-translates-for-text-only-provider-adapters-custom-tool-history-targets-anthropic-messages
+    test: codex-rs/native-shim/src/translation_tests.rs::translates_custom_tool_history_with_content_items_to_anthropic_messages
+    command: cd codex-rs && just test -p codex-native-shim translates_custom_tool_history_with_content_items_to_anthropic_messages
+    status: passing

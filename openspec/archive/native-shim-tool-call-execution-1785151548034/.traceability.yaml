@@ -1,0 +1,13 @@
+scenarios:
+  - scenario: chat-adapter-preserves-the-codex-tool-contract-function-and-custom-tools-target-a-chat-completions-route
+    test: codex-rs/native-shim/src/translation_tests.rs::translates_responses_tools_to_chat_completions
+    command: cd codex-rs && just test -p codex-native-shim translates_responses_tools_to_chat_completions
+    status: passing
+  - scenario: chat-tool-calls-become-codex-responses-output-items-non-streaming-function-call
+    test: codex-rs/native-shim/src/translation_tests.rs::translates_a_non_streaming_chat_function_call_to_a_responses_payload
+    command: cd codex-rs && just test -p codex-native-shim translates_a_non_streaming_chat_function_call_to_a_responses_payload
+    status: passing
+  - scenario: chat-tool-calls-become-codex-responses-output-items-streamed-custom-tool-call
+    test: codex-rs/native-shim/src/translation_tests.rs::translates_streamed_chat_custom_tool_call_to_responses_events
+    command: cd codex-rs && just test -p codex-native-shim translates_streamed_chat_custom_tool_call_to_responses_events
+    status: passing

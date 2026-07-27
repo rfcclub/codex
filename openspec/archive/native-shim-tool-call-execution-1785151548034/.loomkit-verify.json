@@ -1,0 +1,10 @@
+{
+  "change": "native-shim-tool-call-execution",
+  "timestamp": "2026-07-27T11:24:11.497Z",
+  "total_scenarios": 3,
+  "passing": 3,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}
