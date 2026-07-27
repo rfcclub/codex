@@ -1,0 +1,10 @@
+{
+  "change": "native-shim-reasoning-history",
+  "timestamp": "2026-07-27T17:44:01.635Z",
+  "total_scenarios": 1,
+  "passing": 2,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}

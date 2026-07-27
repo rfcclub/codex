@@ -170,6 +170,60 @@ fn translates_responses_tool_history_to_chat_completions() {
 }
 
 #[test]
+fn translates_responses_history_with_reasoning_to_chat_completions() {
+    let request = responses_to_chat_completion(
+        json!({
+            "model": "cheapinf/deepseek-v4-flash",
+            "input": [
+                {
+                    "type": "reasoning",
+                    "id": "rs_123",
+                    "summary": []
+                },
+                {
+                    "type": "function_call",
+                    "call_id": "call_123",
+                    "name": "get_weather",
+                    "arguments": "{\"location\":\"Toronto\"}"
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call_123",
+                    "output": "{\"temperature\":\"20 C\"}"
+                },
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": "Continue."}]
+                }
+            ],
+            "stream": false
+        }),
+        "deepseek-v4-flash",
+    )
+    .expect("supported history with opaque reasoning");
+
+    assert_eq!(
+        request,
+        json!({
+            "model": "deepseek-v4-flash",
+            "stream": false,
+            "messages": [
+                {
+                    "role": "assistant",
+                    "content": "Tool call get_weather (call_123):\n{\"location\":\"Toronto\"}"
+                },
+                {
+                    "role": "user",
+                    "content": "Tool output for call_123:\n{\"temperature\":\"20 C\"}"
+                },
+                {"role": "user", "content": "Continue."}
+            ]
+        })
+    );
+}
+
+#[test]
 fn translates_custom_tool_history_with_content_items_to_chat_completions() {
     let request = responses_to_chat_completion(
         json!({

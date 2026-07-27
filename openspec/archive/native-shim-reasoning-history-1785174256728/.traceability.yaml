@@ -1,0 +1,9 @@
+scenarios:
+  - scenario: preserve-actionable-history-around-opaque-reasoning-interleaved-reasoning-does-not-reject-a-follow-up-turn
+    test: codex-rs/native-shim/src/translation_tests.rs::translates_responses_history_with_reasoning_to_chat_completions
+    command: cd codex-rs && just test -p codex-native-shim translation_tests::translates_responses_history_with_reasoning_to_chat_completions
+    status: passing
+  - scenario: unsupported-item-types-remain-fail-closed
+    test: codex-rs/native-shim/src/translation_tests.rs::rejects_unknown_structured_responses_input_for_chat_completions
+    command: cd codex-rs && just test -p codex-native-shim translation_tests::rejects_unknown_structured_responses_input_for_chat_completions
+    status: passing

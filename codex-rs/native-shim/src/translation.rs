@@ -77,6 +77,7 @@ fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, Transla
         .ok_or(TranslationError::UnsupportedResponsesInput)?;
     input
         .iter()
+        .filter(|item| item.get("type").and_then(Value::as_str) != Some("reasoning"))
         .map(|item| {
             match item.get("type").and_then(Value::as_str) {
                 Some("function_call") | Some("custom_tool_call") => {
