@@ -1,0 +1,9 @@
+scenarios:
+  - scenario: responses-requests-omit-overlong-item-ids-shim-originated-prefixed-id-exceeds-the-provider-maximum
+    test: codex-rs/core/tests/suite/client_websockets.rs::responses_websocket_omits_unprefixed_item_ids_without_mutating_prompt
+    command: just test -p codex-core responses_websocket_omits_unprefixed_item_ids_without_mutating_prompt
+    status: passing
+  - scenario: responses-requests-omit-overlong-item-ids-valid-responses-id-is-retained
+    test: codex-rs/core/tests/suite/client_websockets.rs::responses_websocket_omits_unprefixed_item_ids_without_mutating_prompt
+    command: just test -p codex-core responses_websocket_omits_unprefixed_item_ids_without_mutating_prompt
+    status: passing

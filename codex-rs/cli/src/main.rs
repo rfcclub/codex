@@ -1016,10 +1016,14 @@ async fn run_shim_command(command: ShimCommand) -> anyhow::Result<()> {
     let provider_base_url = format!("{}/v1", runtime.base_url());
     let mut child = tokio::process::Command::new(child_executable);
     if command.compose {
-        child.arg("-c").arg(config_string_override(
-            "composed_shim_extension_json",
-            &extension_path.to_string_lossy(),
-        ));
+        child
+            .arg("-c")
+            .arg(config_string_override(
+                "composed_shim_extension_json",
+                &extension_path.to_string_lossy(),
+            ))
+            .arg("-c")
+            .arg("model_provider=\"openai\"");
     } else {
         child
             .arg("-c")

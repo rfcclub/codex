@@ -393,20 +393,32 @@ async fn responses_websocket_omits_unprefixed_item_ids_without_mutating_prompt()
         "content": [{"type": "input_text", "text": "empty-id message"}],
     }))
     .expect("response item with an empty id should deserialize");
-    let prompt = prompt_with_input(vec![prefixed, unprefixed, empty]);
+    let mut overlong_prefixed = message_item("overlong");
+    overlong_prefixed.set_id(Some(ResponseItemId::from_server(format!(
+        "msg_{}",
+        "x".repeat(61)
+    ))));
+    let prompt = prompt_with_input(vec![prefixed, unprefixed, empty, overlong_prefixed]);
 
     stream_until_complete(&mut client_session, &harness, &prompt).await;
 
     let connection = server.single_connection();
     let body = connection.first().expect("missing request").body_json();
-    assert_eq!(body["input"].as_array().map(Vec::len), Some(3));
+    assert_eq!(body["input"].as_array().map(Vec::len), Some(4));
     assert_eq!(body["input"][0]["id"].as_str(), Some("msg_existing"));
     assert_eq!(body["input"][1].get("id"), None);
     assert_eq!(body["input"][2].get("id"), None);
+    assert_eq!(body["input"][3].get("id"), None);
     assert_eq!(
         serde_json::to_value(&prompt.input).expect("prompt input should serialize")[1]["id"]
             .as_str(),
         Some("018f9e15-7a6a-7000-8000-000000000001")
+    );
+    assert_eq!(
+        serde_json::to_value(&prompt.input).expect("prompt input should serialize")[3]["id"]
+            .as_str()
+            .map(str::len),
+        Some(65)
     );
 
     server.shutdown().await;

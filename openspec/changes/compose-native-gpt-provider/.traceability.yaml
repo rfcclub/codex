@@ -1,0 +1,5 @@
+scenarios:
+  - scenario: compose-mode-starts-gpt-turns-on-the-native-provider-gpt-selected-with-a-stale-global-shim-provider
+    test: codex-rs/cli/tests/shim.rs::compose_auth_boundary_forbids_native_model_from_contacting_shim_upstream
+    command: just test -p codex-cli compose_auth_boundary_forbids_native_model_from_contacting_shim_upstream
+    status: passing

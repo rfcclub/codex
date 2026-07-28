@@ -429,6 +429,21 @@ async fn compose_auth_boundary_forbids_native_model_from_contacting_shim_upstrea
             shim_upstream.uri()
         ),
     )?;
+    std::fs::write(
+        codex_home.join("config.toml"),
+        format!(
+            r#"
+model_provider = "codex_shim"
+
+[model_providers.codex_shim]
+name = "Stale Codex Shim"
+base_url = "{}/v1"
+wire_api = "responses"
+experimental_bearer_token = "unused"
+"#,
+            shim_upstream.uri()
+        ),
+    )?;
 
     let binary = codex_utils_cargo_bin::cargo_bin("codex")?;
     let native_base_url = format!("{}/v1", native_upstream.uri());
