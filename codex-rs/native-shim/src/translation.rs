@@ -53,10 +53,8 @@ fn responses_tools_to_chat(tools: &Value) -> Result<Value, TranslationError> {
         .ok_or(TranslationError::UnsupportedResponsesInput)?;
     tools
         .iter()
+        .filter(|tool| tool.get("type").and_then(Value::as_str) == Some("function"))
         .map(|tool| {
-            if tool.get("type").and_then(Value::as_str) != Some("function") {
-                return Ok(tool.clone());
-            }
             let name = tool
                 .get("name")
                 .and_then(Value::as_str)

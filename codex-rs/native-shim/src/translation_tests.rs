@@ -106,12 +106,6 @@ fn translates_responses_tools_to_chat_completions() {
                         "description": "List project files.",
                         "parameters": {"type": "object", "properties": {}}
                     }
-                },
-                {
-                    "type": "custom",
-                    "name": "exec",
-                    "description": "Run a command.",
-                    "format": {"type": "grammar", "syntax": "lark", "definition": "start: /.+/"}
                 }
             ],
             "tool_choice": "required",
