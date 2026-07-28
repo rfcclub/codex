@@ -464,10 +464,10 @@ pub fn build_models_manager(
         config.features.enabled(Feature::ApiKeyModelDiscovery),
     );
     match config.composed_shim_catalog.clone() {
-        Some(shim_catalog) => Arc::new(
-            ComposedModelsManager::from_shared(native_manager, shim_catalog)
-                .expect("validated composed shim catalog must not collide at startup"),
-        ),
+        Some(shim_catalog) => Arc::new(ComposedModelsManager::from_shared(
+            native_manager,
+            shim_catalog,
+        )),
         None => native_manager,
     }
 }

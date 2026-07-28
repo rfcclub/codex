@@ -1,0 +1,5 @@
+scenarios:
+  - scenario: shim-catalog-wins-a-cross-source-slug-collision-remote-glm-collides-with-local-shim-glm
+    test: codex-rs/models-manager/src/composed_catalog_tests.rs::prefers_shim_model_for_cross_source_slug_collisions
+    command: just test -p codex-models-manager composed_catalog_tests
+    status: passing

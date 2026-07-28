@@ -8,11 +8,9 @@ use codex_protocol::config_types::CollaborationModeMask;
 use codex_protocol::openai_models::ModelInfo;
 use codex_protocol::openai_models::ModelsResponse;
 use std::collections::HashSet;
-use std::fmt;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::sync::TryLockError;
-use tracing::warn;
 
 /// An immutable shim extension layered over the normal authenticated manager.
 ///
@@ -26,41 +24,25 @@ pub struct ComposedModelsManager {
     last_valid_models: RwLock<Vec<ModelInfo>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ComposedCatalogError {
-    slug: String,
-}
-
-impl fmt::Display for ComposedCatalogError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "duplicate composed model slug `{}`", self.slug)
-    }
-}
-
-impl std::error::Error for ComposedCatalogError {}
-
 impl ComposedModelsManager {
-    pub fn new<M>(native: M, shim_catalog: ModelsResponse) -> Result<Self, ComposedCatalogError>
+    pub fn new<M>(native: M, shim_catalog: ModelsResponse) -> Self
     where
         M: ModelsManager + 'static,
     {
         Self::from_shared(Arc::new(native), shim_catalog)
     }
 
-    pub fn from_shared(
-        native: SharedModelsManager,
-        shim_catalog: ModelsResponse,
-    ) -> Result<Self, ComposedCatalogError> {
+    pub fn from_shared(native: SharedModelsManager, shim_catalog: ModelsResponse) -> Self {
         let shim_models = shim_catalog.models;
         let initial = merge_models(
             native.try_get_remote_models().unwrap_or_default(),
             &shim_models,
-        )?;
-        Ok(Self {
+        );
+        Self {
             native,
             shim_models,
             last_valid_models: RwLock::new(initial),
-        })
+        }
     }
 
     async fn refresh_composed_catalog(
@@ -72,41 +54,21 @@ impl ComposedModelsManager {
             .native
             .raw_model_catalog(refresh_strategy, http_client_factory)
             .await;
-        match merge_models(native.models, &self.shim_models) {
-            Ok(models) => {
-                *self.last_valid_models.write().await = models.clone();
-                models
-            }
-            Err(error) => {
-                warn!(%error, "keeping last valid composed model catalog after native refresh");
-                self.last_valid_models.read().await.clone()
-            }
-        }
+        let models = merge_models(native.models, &self.shim_models);
+        *self.last_valid_models.write().await = models.clone();
+        models
     }
 }
 
-fn merge_models(
-    mut native_models: Vec<ModelInfo>,
-    shim_models: &[ModelInfo],
-) -> Result<Vec<ModelInfo>, ComposedCatalogError> {
-    let mut slugs = HashSet::with_capacity(native_models.len() + shim_models.len());
-    for model in &native_models {
-        if !slugs.insert(model.slug.clone()) {
-            return Err(ComposedCatalogError {
-                slug: model.slug.clone(),
-            });
-        }
-    }
-    for model in shim_models {
-        if !slugs.insert(model.slug.clone()) {
-            return Err(ComposedCatalogError {
-                slug: model.slug.clone(),
-            });
-        }
-        native_models.push(model.clone());
-    }
+fn merge_models(mut native_models: Vec<ModelInfo>, shim_models: &[ModelInfo]) -> Vec<ModelInfo> {
+    let shim_slugs = shim_models
+        .iter()
+        .map(|shim_model| shim_model.slug.as_str())
+        .collect::<HashSet<_>>();
+    native_models.retain(|native_model| !shim_slugs.contains(native_model.slug.as_str()));
+    native_models.extend_from_slice(shim_models);
     native_models.sort_by(|left, right| left.slug.cmp(&right.slug));
-    Ok(native_models)
+    native_models
 }
 
 impl ModelsManager for ComposedModelsManager {
