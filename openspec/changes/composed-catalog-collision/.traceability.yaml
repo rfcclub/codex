@@ -1,0 +1,5 @@
+scenarios:
+  - scenario: remote-catalog-wins-duplicate-composed-slugs-composed-model-is-already-remote
+    test: codex-rs/tui/src/app_server_session.rs::remote_picker_deduplicates_composed_model_that_matches_server_model
+    command: just test -p codex-tui remote_picker_deduplicates_composed_model_that_matches_server_model
+    status: passing

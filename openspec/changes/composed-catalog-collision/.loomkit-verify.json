@@ -1,0 +1,10 @@
+{
+  "change": "composed-catalog-collision",
+  "timestamp": "2026-07-28T12:52:09.425Z",
+  "total_scenarios": 1,
+  "passing": 1,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}

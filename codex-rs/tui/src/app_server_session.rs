@@ -729,7 +729,7 @@ impl AppServerSession {
                 .as_ref()
                 .into_iter()
                 .flat_map(|catalog| catalog.models.iter().cloned().map(ModelPreset::from)),
-        )?;
+        );
         crate::service_tier_resolution::constrain_server_service_tiers(
             &mut available_models,
             &requirements,
@@ -1936,21 +1936,17 @@ pub(crate) fn model_preset_from_api_model(model: ApiModel) -> ModelPreset {
 fn merge_remote_model_presets(
     mut remote_models: Vec<ModelPreset>,
     composed_models: impl IntoIterator<Item = ModelPreset>,
-) -> Result<Vec<ModelPreset>> {
+) -> Vec<ModelPreset> {
     let mut model_ids = remote_models
         .iter()
         .map(|model| model.model.clone())
         .collect::<HashSet<_>>();
     for model in composed_models {
-        if !model_ids.insert(model.model.clone()) {
-            return Err(color_eyre::eyre::eyre!(
-                "composed shim model `{}` collides with the remote app-server catalog",
-                model.model
-            ));
+        if model_ids.insert(model.model.clone()) {
+            remote_models.push(model);
         }
-        remote_models.push(model);
     }
-    Ok(remote_models)
+    remote_models
 }
 
 fn approvals_reviewer_override_from_config(
@@ -2889,8 +2885,7 @@ mod tests {
         let models = merge_remote_model_presets(
             vec![model_preset("gpt-5.6")],
             vec![model_preset("shim/one"), model_preset("shim/two")],
-        )
-        .expect("distinct local shim models should merge");
+        );
 
         assert_eq!(
             models
@@ -2902,14 +2897,15 @@ mod tests {
     }
 
     #[test]
-    fn remote_picker_rejects_composed_model_that_collides_with_server_model() {
-        let error = merge_remote_model_presets(
-            vec![model_preset("gpt-5.6")],
-            vec![model_preset("gpt-5.6")],
-        )
-        .expect_err("a local shim model must not replace a server model");
+    fn remote_picker_deduplicates_composed_model_that_matches_server_model() {
+        let mut remote_model = model_preset("nahcrof/glm-5.2");
+        remote_model.display_name = "Remote GLM".to_string();
+        let mut composed_model = model_preset("nahcrof/glm-5.2");
+        composed_model.display_name = "Local GLM".to_string();
 
-        assert!(error.to_string().contains("gpt-5.6"));
+        let models = merge_remote_model_presets(vec![remote_model.clone()], vec![composed_model]);
+
+        assert_eq!(models, vec![remote_model]);
     }
 
     #[test]
@@ -2917,8 +2913,7 @@ mod tests {
         let models = merge_remote_model_presets(
             vec![model_preset("gpt-5.6"), model_preset("gpt-5.5")],
             Vec::new(),
-        )
-        .expect("an empty local catalog should preserve server models");
+        );
 
         assert_eq!(
             models
