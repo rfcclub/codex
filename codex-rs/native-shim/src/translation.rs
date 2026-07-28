@@ -10,6 +10,12 @@ pub enum TranslationError {
     UnsupportedChatCompletion,
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum ToolHistoryFormat {
+    ChatCompletions,
+    PlainText,
+}
+
 pub fn responses_to_chat_completion(
     request: Value,
     upstream_model: &str,
@@ -22,6 +28,7 @@ pub fn responses_to_chat_completion(
         request
             .get("input")
             .ok_or(TranslationError::UnsupportedResponsesInput)?,
+        ToolHistoryFormat::ChatCompletions,
     )?);
     let mut translated = serde_json::Map::new();
     translated.insert("model".to_owned(), Value::String(upstream_model.to_owned()));
@@ -67,7 +74,10 @@ fn responses_tools_to_chat(tools: &Value) -> Result<Value, TranslationError> {
         .map(Value::Array)
 }
 
-fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, TranslationError> {
+fn responses_input_to_chat_messages(
+    input: &Value,
+    tool_history_format: ToolHistoryFormat,
+) -> Result<Vec<Value>, TranslationError> {
     if let Some(input) = input.as_str() {
         return Ok(vec![json!({"role": "user", "content": input})]);
     }
@@ -80,7 +90,35 @@ fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, Transla
         .filter(|item| item.get("type").and_then(Value::as_str) != Some("reasoning"))
         .map(|item| {
             match item.get("type").and_then(Value::as_str) {
-                Some("function_call") | Some("custom_tool_call") => {
+                Some("function_call") => {
+                    let name = item
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .filter(|name| !name.is_empty())
+                        .ok_or(TranslationError::UnsupportedResponsesInput)?;
+                    let call_id = item
+                        .get("call_id")
+                        .or_else(|| item.get("id"))
+                        .and_then(Value::as_str)
+                        .unwrap_or("unknown");
+                    let arguments = item.get("arguments").and_then(Value::as_str).unwrap_or("");
+                    if tool_history_format == ToolHistoryFormat::PlainText {
+                        return Ok(json!({
+                            "role": "assistant",
+                            "content": format!("Tool call {name} ({call_id}):\n{arguments}")
+                        }));
+                    }
+                    return Ok(json!({
+                        "role": "assistant",
+                        "content": null,
+                        "tool_calls": [{
+                            "id": call_id,
+                            "type": "function",
+                            "function": {"name": name, "arguments": arguments}
+                        }]
+                    }));
+                }
+                Some("custom_tool_call") => {
                     let name = item
                         .get("name")
                         .and_then(Value::as_str)
@@ -92,13 +130,24 @@ fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, Transla
                         .and_then(Value::as_str)
                         .unwrap_or("unknown");
                     let input = item
-                        .get("arguments")
-                        .or_else(|| item.get("input"))
+                        .get("input")
+                        .or_else(|| item.get("arguments"))
                         .and_then(Value::as_str)
                         .unwrap_or("");
+                    if tool_history_format == ToolHistoryFormat::PlainText {
+                        return Ok(json!({
+                            "role": "assistant",
+                            "content": format!("Tool call {name} ({call_id}):\n{input}")
+                        }));
+                    }
                     return Ok(json!({
                         "role": "assistant",
-                        "content": format!("Tool call {name} ({call_id}):\n{input}")
+                        "content": null,
+                        "tool_calls": [{
+                            "id": call_id,
+                            "type": "custom",
+                            "custom": {"name": name, "input": input}
+                        }]
                     }));
                 }
                 Some("function_call_output") | Some("custom_tool_call_output") => {
@@ -109,9 +158,16 @@ fn responses_input_to_chat_messages(input: &Value) -> Result<Vec<Value>, Transla
                         .unwrap_or("unknown");
                     let output = response_content_to_text(item.get("output"))
                         .ok_or(TranslationError::UnsupportedResponsesInput)?;
+                    if tool_history_format == ToolHistoryFormat::PlainText {
+                        return Ok(json!({
+                            "role": "user",
+                            "content": format!("Tool output for {call_id}:\n{output}")
+                        }));
+                    }
                     return Ok(json!({
-                        "role": "user",
-                        "content": format!("Tool output for {call_id}:\n{output}")
+                        "role": "tool",
+                        "tool_call_id": call_id,
+                        "content": output
                     }));
                 }
                 Some("message") | None => {}
@@ -454,6 +510,7 @@ pub fn responses_to_anthropic_message(
         request
             .get("input")
             .ok_or(TranslationError::UnsupportedResponsesInput)?,
+        ToolHistoryFormat::PlainText,
     )?;
     let mut system_parts = request
         .get("instructions")

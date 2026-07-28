@@ -157,11 +157,20 @@ fn translates_responses_tool_history_to_chat_completions() {
             "messages": [
                 {
                     "role": "assistant",
-                    "content": "Tool call exec_command (call_123):\n{\"cmd\":\"pwd\"}"
+                    "content": null,
+                    "tool_calls": [{
+                        "id": "call_123",
+                        "type": "function",
+                        "function": {
+                            "name": "exec_command",
+                            "arguments": "{\"cmd\":\"pwd\"}"
+                        }
+                    }]
                 },
                 {
-                    "role": "user",
-                    "content": "Tool output for call_123:\n{\"output\":\"/repo\"}"
+                    "role": "tool",
+                    "tool_call_id": "call_123",
+                    "content": "{\"output\":\"/repo\"}"
                 },
                 {"role": "user", "content": "Continue."}
             ]
@@ -211,11 +220,20 @@ fn translates_responses_history_with_reasoning_to_chat_completions() {
             "messages": [
                 {
                     "role": "assistant",
-                    "content": "Tool call get_weather (call_123):\n{\"location\":\"Toronto\"}"
+                    "content": null,
+                    "tool_calls": [{
+                        "id": "call_123",
+                        "type": "function",
+                        "function": {
+                            "name": "get_weather",
+                            "arguments": "{\"location\":\"Toronto\"}"
+                        }
+                    }]
                 },
                 {
-                    "role": "user",
-                    "content": "Tool output for call_123:\n{\"temperature\":\"20 C\"}"
+                    "role": "tool",
+                    "tool_call_id": "call_123",
+                    "content": "{\"temperature\":\"20 C\"}"
                 },
                 {"role": "user", "content": "Continue."}
             ]
@@ -258,8 +276,16 @@ fn translates_custom_tool_history_with_content_items_to_chat_completions() {
             "model": "mimo-v2.5-pro",
             "stream": false,
             "messages": [
-                {"role": "assistant", "content": "Tool call exec (call_456):\ntext('pwd')"},
-                {"role": "user", "content": "Tool output for call_456:\n/repo"},
+                {
+                    "role": "assistant",
+                    "content": null,
+                    "tool_calls": [{
+                        "id": "call_456",
+                        "type": "custom",
+                        "custom": {"name": "exec", "input": "text('pwd')"}
+                    }]
+                },
+                {"role": "tool", "tool_call_id": "call_456", "content": "/repo"},
                 {"role": "user", "content": "Continue."}
             ]
         })
