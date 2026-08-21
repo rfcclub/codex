@@ -5144,6 +5144,13 @@ fn reusable_server_identity(
     )
 }
 
+#[test]
+fn telegram_mcp_server_accepts_user_input_notifications() {
+    assert!(accepts_user_input_notifications("telegram"));
+    assert!(accepts_user_input_notifications("colony-mesh"));
+    assert!(!accepts_user_input_notifications("untrusted"));
+}
+
 async fn manager_with_reusable_ready_server(
     config: &McpServerConfig,
     runtime_context: &McpRuntimeContext,

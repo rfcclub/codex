@@ -1,0 +1,13 @@
+scenarios:
+  - scenario: standalone-telegram-user-input-delivery-telegram-plugin-notification
+    test: codex-rs/codex-mcp/src/connection_manager_tests.rs::telegram_mcp_server_accepts_user_input_notifications
+    command: just test -p codex-mcp telegram_mcp_server_accepts_user_input_notifications
+    status: passing
+  - scenario: standalone-telegram-user-input-delivery-other-mcp-notification
+    test: codex-rs/codex-mcp/src/connection_manager_tests.rs::telegram_mcp_server_accepts_user_input_notifications
+    command: just test -p codex-mcp telegram_mcp_server_accepts_user_input_notifications
+    status: passing
+  - scenario: standalone-telegram-user-input-delivery-legacy-compatibility
+    test: codex-rs/codex-mcp/src/connection_manager_tests.rs::telegram_mcp_server_accepts_user_input_notifications
+    command: just test -p codex-mcp telegram_mcp_server_accepts_user_input_notifications
+    status: passing

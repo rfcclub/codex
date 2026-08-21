@@ -1,0 +1,10 @@
+{
+  "change": "telegram-plugin-user-input",
+  "timestamp": "2026-08-21T13:51:23.379Z",
+  "total_scenarios": 3,
+  "passing": 3,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}

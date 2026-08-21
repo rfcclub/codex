@@ -172,6 +172,15 @@ struct McpServerView {
     catalog_item_limit: usize,
 }
 
+/// MCP servers explicitly permitted to create a realtime Codex user turn.
+///
+/// This capability is intentionally narrower than general MCP tool access:
+/// only the built-in Telegram channel and the legacy Colony Mesh bridge may
+/// submit user input on behalf of a user.
+fn accepts_user_input_notifications(server_name: &str) -> bool {
+    matches!(server_name, "colony-mesh" | "telegram")
+}
+
 impl McpServerView {
     fn allows_cached_startup(&self) -> bool {
         self.startup_readiness == McpStartupReadiness::Catalog
@@ -604,7 +613,7 @@ impl McpConnectionSet {
                 None
             };
             let has_runtime_auth = runtime_auth_provider.is_some();
-            let server_user_input_handler = (server_name == "colony-mesh")
+            let server_user_input_handler = accepts_user_input_notifications(&server_name)
                 .then(|| user_input_handler.clone())
                 .flatten();
             let async_managed_client = AsyncManagedClient::new(
