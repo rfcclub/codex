@@ -113,6 +113,7 @@ async fn stalled_handshake_unblocks_remote_executor(
                 }
                 .boxed()
             }),
+            /*user_input_handler*/ None,
         )
         .await
         .err()

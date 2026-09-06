@@ -104,8 +104,10 @@ impl Session {
         Arc::new(move |text| {
             let session = session.clone();
             Box::pin(async move {
-                if let Some(session) = session.upgrade() {
-                    session.route_realtime_text_input(text).await;
+                if let Some(session) = session.upgrade()
+                    && let Err(error) = session.route_realtime_text_input(text).await
+                {
+                    tracing::warn!("failed to route MCP user input into the session: {error}");
                 }
             })
         })

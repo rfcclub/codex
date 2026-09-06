@@ -962,7 +962,10 @@ impl Session {
         per_turn_config.service_tier = session_configuration.step_settings.service_tier.clone();
         per_turn_config.personality = session_configuration.step_settings.personality;
         per_turn_config.approvals_reviewer = session_configuration.step_settings.approvals_reviewer;
-        let selected_model = session_configuration.step_settings.collaboration_mode.model();
+        let selected_model = session_configuration
+            .step_settings
+            .collaboration_mode
+            .model();
         per_turn_config.model = Some(selected_model.to_string());
         if per_turn_config
             .composed_shim_model_slugs

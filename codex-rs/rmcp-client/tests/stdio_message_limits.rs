@@ -278,6 +278,7 @@ async fn local_stdio_shutdown_terminates_descendants_after_server_exit() -> anyh
                     }
                     .boxed()
                 }),
+                None,
             )
             .await?;
 

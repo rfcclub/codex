@@ -2137,6 +2137,7 @@ async fn hosted_apps_protocol_mode_is_independent_of_generic_mode() -> anyhow::R
                 auth_manager: None,
                 elicitation_reviewer: None,
                 elicitation_lifecycle: None,
+                user_input_handler: None,
             },
             ElicitationRequestRouter::default(),
         )
@@ -2235,6 +2236,7 @@ async fn codex_apps_extension_does_not_share_host_owned_tools_cache() -> anyhow:
                 auth_manager: None,
                 elicitation_reviewer: None,
                 elicitation_lifecycle: None,
+                user_input_handler: None,
             },
             ElicitationRequestRouter::default(),
         )
@@ -4662,6 +4664,7 @@ async fn executor_owned_chatgpt_mcp_accepts_only_safe_explicit_authorization() -
                 auth_manager: None,
                 elicitation_reviewer: None,
                 elicitation_lifecycle: None,
+                user_input_handler: None,
             },
             ElicitationRequestRouter::default(),
         )

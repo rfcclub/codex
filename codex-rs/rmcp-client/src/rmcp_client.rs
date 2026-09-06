@@ -193,6 +193,7 @@ struct InitializeContext {
     timeout: Option<Duration>,
     client_info: InitializeRequestParams,
     send_elicitation: Arc<SendElicitation>,
+    send_user_input: Option<SendUserInput>,
 }
 
 #[derive(Clone)]
@@ -649,6 +650,7 @@ impl RmcpClient {
             timeout,
             client_info: params,
             send_elicitation: Arc::new(send_elicitation),
+            send_user_input,
         };
         let pending_transport = {
             let mut guard = self.state.lock().await;
@@ -1299,6 +1301,7 @@ impl RmcpClient {
             initialize_context.client_info.clone(),
             Box::new(move |id, request| send_elicitation(id, request)),
             self.elicitation_pause_state.clone(),
+            initialize_context.send_user_input.clone(),
         );
         let _initialize_deadline = match &self.transport_recipe {
             TransportRecipe::StreamableHttp {

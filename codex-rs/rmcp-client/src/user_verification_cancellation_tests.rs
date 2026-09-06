@@ -94,6 +94,7 @@ async fn recovered_connections_accept_elicitations_with_previously_cancelled_ids
                         })
                     })
                 }),
+                None,
             )
             .await?;
         let server = timeout(Duration::from_secs(/*secs*/ 5), server_rx.recv())
@@ -179,6 +180,7 @@ async fn ordinary_elicitations_release_pending_responses_on_cancellation() -> an
                 Box::pin(async move { Ok(response_rx.await?) })
             }),
             pause_state,
+            None,
         );
         let (client_transport, server_transport) = tokio::io::duplex(/*max_buf_size*/ 4096);
         let client = serve_directly(service, client_transport, /*peer_info*/ None);
@@ -332,6 +334,7 @@ async fn user_verification_service_cancellation_drops_pending_response() -> anyh
             Box::pin(async move { Ok(response_rx.await?) })
         }),
         pause_state,
+        None,
     );
     let (client_transport, server_transport) = tokio::io::duplex(/*max_buf_size*/ 4096);
     let client = serve_directly(service, client_transport, /*peer_info*/ None);
@@ -391,6 +394,7 @@ async fn cancelling_one_verification_leaves_the_mcp_connection_and_other_request
             Box::pin(async move { Ok(response_rx.await?) })
         }),
         pause_state,
+        None,
     );
     let (client_transport, server_transport) = tokio::io::duplex(/*max_buf_size*/ 4096);
     let client = serve_directly(service, client_transport, /*peer_info*/ None);

@@ -124,6 +124,7 @@ async fn local_stdio_inherits_ca_certificate_variables_child() -> anyhow::Result
                     }
                     .boxed()
                 }),
+                /*user_input_handler*/ None,
             )
             .await?;
         let result = client
