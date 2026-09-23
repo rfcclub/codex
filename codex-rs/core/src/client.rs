@@ -653,12 +653,15 @@ impl ModelClient {
             state.originator.clone(),
             state.model_verbosity,
             state.content_item_kinds_enabled,
+            state.reasoning_effort_override_enabled,
             state.enable_request_compression,
             state.include_timing_metrics,
             state.beta_features_header.clone(),
             state.concurrent_reasoning_summaries_enabled,
             state.attestation_provider.clone(),
             self.http_client_factory.clone(),
+            state.workspace_routing.clone(),
+            self.request_contributors.clone(),
         );
         client.prompt_cache_key_override = self.prompt_cache_key_override.clone();
         client
