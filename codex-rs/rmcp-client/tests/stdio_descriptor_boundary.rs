@@ -134,6 +134,7 @@ for line in sys.stdin:
                     }
                     .boxed()
                 }),
+                /*send_user_input*/ None,
             )
             .await?;
         let result = client

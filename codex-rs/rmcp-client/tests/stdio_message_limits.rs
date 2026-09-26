@@ -198,6 +198,7 @@ async fn local_stdio_initializes_without_a_console_directly_and_through_cmd() ->
                     }
                     .boxed()
                 }),
+                /*send_user_input*/ None,
             )
             .await?;
         let console_state = std::fs::read_to_string(&console_state_file)?;
@@ -279,6 +280,7 @@ async fn local_stdio_shutdown_terminates_descendants_after_server_exit() -> anyh
                     .boxed()
                 }),
                 None,
+                /*send_user_input*/ None,
             )
             .await?;
 

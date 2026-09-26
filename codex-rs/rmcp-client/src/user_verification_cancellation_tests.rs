@@ -94,7 +94,7 @@ async fn recovered_connections_accept_elicitations_with_previously_cancelled_ids
                         })
                     })
                 }),
-                None,
+                /*send_user_input*/ None,
             )
             .await?;
         let server = timeout(Duration::from_secs(/*secs*/ 5), server_rx.recv())

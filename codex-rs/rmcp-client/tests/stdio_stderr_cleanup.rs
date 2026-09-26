@@ -176,7 +176,7 @@ for line in sys.stdin:
                 }
                 .boxed()
             }),
-            None,
+            /*send_user_input*/ None,
         )
         .await?;
     // Keep the current-thread Tokio runtime blocked until the server has
