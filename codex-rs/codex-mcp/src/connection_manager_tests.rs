@@ -2053,6 +2053,7 @@ async fn read_only_apps_discovery_never_uses_a_shared_writable_catalog() -> anyh
                 auth_manager: None,
                 elicitation_reviewer: None,
                 elicitation_lifecycle: None,
+                user_input_handler: None,
             },
             ElicitationRequestRouter::default(),
         )
