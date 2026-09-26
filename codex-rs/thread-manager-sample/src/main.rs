@@ -252,6 +252,9 @@ async fn new_config(
         model_post_turn_compact_threshold_percent: 0,
         model_provider_id,
         model_provider,
+        composed_shim_catalog: None,
+        composed_shim_extension_json: None,
+        composed_shim_model_slugs: Default::default(),
         personality: None,
         permissions: Permissions::from_approval_and_profile(
             Constrained::allow_any(AskForApproval::Never),
