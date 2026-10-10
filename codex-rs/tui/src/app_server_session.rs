@@ -2939,7 +2939,7 @@ mod tests {
             },
         );
 
-        let overrides = config_request_overrides_from_config(&config)
+        let overrides = config_request_overrides_from_config(&config, ThreadParamsMode::Remote)
             .expect("thread config overrides should exist");
 
         assert_eq!(
@@ -2966,7 +2966,7 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let config = build_config(&temp_dir).await;
 
-        let overrides = config_request_overrides_from_config(&config)
+        let overrides = config_request_overrides_from_config(&config, ThreadParamsMode::Remote)
             .expect("thread config overrides should exist");
 
         assert!(!overrides.contains_key("composed_shim_extension_json"));
