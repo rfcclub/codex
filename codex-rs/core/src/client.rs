@@ -658,6 +658,7 @@ impl ModelClient {
             state.include_timing_metrics,
             state.beta_features_header.clone(),
             state.concurrent_reasoning_summaries_enabled,
+            state.output_token_replay_enabled,
             state.attestation_provider.clone(),
             self.http_client_factory.clone(),
             state.workspace_routing.clone(),
