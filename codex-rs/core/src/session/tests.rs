@@ -6423,6 +6423,7 @@ async fn mcp_runtime_keeps_local_backend_without_a_selected_local_environment() 
         },
         &[],
         /*elicitation_reviewer*/ None,
+        /*user_input_handler*/ None,
     );
     assert_eq!(
         runtime.config.environment_use_mxc,
