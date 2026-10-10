@@ -238,6 +238,7 @@ mod collaboration_catalog_tests;
 mod compaction_tests;
 #[path = "tests/completion_styling_tests.rs"]
 mod completion_styling;
+mod composed_shim_quota_tests;
 mod composer_submission;
 #[path = "tests/computer_activity_tests.rs"]
 mod computer_activity_tests;

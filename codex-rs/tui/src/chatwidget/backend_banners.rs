@@ -59,6 +59,13 @@ pub(super) struct BackendBannerState {
 }
 
 impl ChatWidget {
+    fn uses_composed_shim_model(&self) -> bool {
+        self.config
+            .composed_shim_model_slugs
+            .iter()
+            .any(|model| model == self.current_model())
+    }
+
     pub(super) fn restrict_model_picker_to_luna_reserve(&self) -> bool {
         // A fresh account read can allow manual recovery even without a valid saved return model.
         self.current_model() == LUNA_RESERVE_MODEL
@@ -71,7 +78,8 @@ impl ChatWidget {
     }
 
     pub(super) fn waiting_for_luna_reserve(&self) -> bool {
-        self.current_model() != LUNA_RESERVE_MODEL
+        !self.uses_composed_shim_model()
+            && self.current_model() != LUNA_RESERVE_MODEL
             && self
                 .backend_banner_state
                 .banner
@@ -80,7 +88,10 @@ impl ChatWidget {
     }
 
     pub(crate) fn backend_banner_fallback(&mut self) -> Option<AutomaticModelSwitch> {
-        if !self.has_chatgpt_account || !self.requires_openai_auth {
+        if !self.has_chatgpt_account
+            || !self.requires_openai_auth
+            || self.uses_composed_shim_model()
+        {
             return None;
         }
         if self.current_model() == LUNA_RESERVE_MODEL
@@ -389,6 +400,9 @@ impl ChatWidget {
 
     pub(super) fn refresh_backend_banner_visibility(&mut self) {
         let banner = self.backend_banner_state.banner.as_ref().filter(|banner| {
+            if self.uses_composed_shim_model() {
+                return false;
+            }
             // Keep recovery actions available while switching, including on older servers
             // without settings/update. The copy below describes the accepted model only.
             if banner.banner_type == LUNA_RESERVE_BANNER {
