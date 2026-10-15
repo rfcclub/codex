@@ -802,10 +802,18 @@ impl ChatSseToResponses {
                         };
                         tool_call
                     };
-                    if let Some(call_id) = tool_call_delta.get("id").and_then(Value::as_str) {
+                    if let Some(call_id) = tool_call_delta
+                        .get("id")
+                        .and_then(Value::as_str)
+                        .filter(|call_id| !call_id.is_empty())
+                    {
                         streamed_tool_call.call_id = Some(call_id.to_owned());
                     }
-                    if let Some(kind) = tool_call_delta.get("type").and_then(Value::as_str) {
+                    if let Some(kind) = tool_call_delta
+                        .get("type")
+                        .and_then(Value::as_str)
+                        .filter(|kind| !kind.is_empty())
+                    {
                         streamed_tool_call.kind = Some(kind.to_owned());
                     }
                     let payload = match streamed_tool_call.kind.as_deref() {
@@ -814,7 +822,11 @@ impl ChatSseToResponses {
                         Some(_) => None,
                     };
                     if let Some(payload) = payload {
-                        if let Some(name) = payload.get("name").and_then(Value::as_str) {
+                        if let Some(name) = payload
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .filter(|name| !name.is_empty())
+                        {
                             streamed_tool_call.name = Some(name.to_owned());
                         }
                         let input = match streamed_tool_call.kind.as_deref() {

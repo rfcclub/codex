@@ -622,6 +622,41 @@ data: [DONE]
 }
 
 #[test]
+fn streamed_tool_call_ignores_empty_continuation_metadata() {
+    let mut adapter = ChatSseToResponses::default();
+    let events = adapter.push_bytes(
+        br#"data: {"id":"chatcmpl-1","choices":[{"delta":{"role":"assistant"},"finish_reason":""}]}
+
+data: {"id":"chatcmpl-1","choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"shell","arguments":""}}]},"finish_reason":""}]}
+
+data: {"id":"chatcmpl-1","choices":[{"delta":{"tool_calls":[{"index":0,"id":"","type":"","function":{"name":"","arguments":"{\"command\":[\"pwd\"]}"}}]},"finish_reason":""}]}
+
+data: {"id":"chatcmpl-1","choices":[{"delta":{},"finish_reason":"tool_calls"}]}
+
+data: [DONE]
+
+"#,
+    );
+
+    let items = events
+        .iter()
+        .filter_map(|event| event.strip_prefix("event: response.output_item.done\ndata: "))
+        .map(|data| serde_json::from_str::<serde_json::Value>(data.trim_end()).expect("event json"))
+        .map(|event| event["item"].clone())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        items,
+        vec![json!({
+            "type": "function_call",
+            "call_id": "call_1",
+            "name": "shell",
+            "arguments": "{\"command\":[\"pwd\"]}"
+        })]
+    );
+}
+
+#[test]
 fn translates_anthropic_sse_frames_to_responses_events() {
     let mut adapter = AnthropicSseToResponses::default();
     let events = adapter.push_bytes(include_bytes!(
