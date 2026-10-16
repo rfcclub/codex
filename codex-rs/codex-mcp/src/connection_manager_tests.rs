@@ -5155,6 +5155,16 @@ fn telegram_mcp_server_accepts_user_input_notifications() {
     assert!(!accepts_user_input_notifications("untrusted"));
 }
 
+#[test]
+fn garden_hub_mcp_server_accepts_only_exact_user_input_identity() {
+    assert!(accepts_user_input_notifications("garden-hub"));
+    for name in ["garden_hub", "garden-hub-evil", "Garden-Hub", "", "untrusted"] {
+        assert!(!accepts_user_input_notifications(name), "{name}");
+    }
+    assert!(accepts_user_input_notifications("telegram"));
+    assert!(accepts_user_input_notifications("colony-mesh"));
+}
+
 async fn manager_with_reusable_ready_server(
     config: &McpServerConfig,
     runtime_context: &McpRuntimeContext,

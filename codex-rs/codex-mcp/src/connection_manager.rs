@@ -178,7 +178,7 @@ struct McpServerView {
 /// only the built-in Telegram channel and the legacy Colony Mesh bridge may
 /// submit user input on behalf of a user.
 fn accepts_user_input_notifications(server_name: &str) -> bool {
-    matches!(server_name, "colony-mesh" | "telegram")
+    matches!(server_name, "colony-mesh" | "telegram" | "garden-hub")
 }
 
 impl McpServerView {
