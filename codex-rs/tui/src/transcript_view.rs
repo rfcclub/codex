@@ -17,6 +17,7 @@ mod layout;
 mod mutations;
 mod prompt_header;
 mod search;
+mod select_mode;
 mod selection;
 mod snapshot;
 mod text;
@@ -29,6 +30,7 @@ use crate::history_cell::HistoryCell;
 use crate::history_cell::HistoryRenderMode;
 use crate::pager_overlay::TranscriptHistoryState;
 use crate::terminal_hyperlinks::HyperlinkLine;
+use crate::tui::SelectionCopy;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Stylize;
@@ -38,6 +40,7 @@ use ratatui::widgets::Widget;
 
 use layout::LayoutCache;
 use search::Search;
+use select_mode::SelectMode;
 use selection::Selection;
 use snapshot::ViewSnapshot;
 use text::TextLayout;
@@ -86,9 +89,11 @@ struct VisibleRow {
 
 /// Shared scrolling and interaction state for compact and detailed transcript presentations.
 pub(crate) struct TranscriptView {
+    pub(crate) image_protocol: Option<crate::pets::ImageProtocol>,
     pub(crate) mouse_scroll_speed: f64,
     pending_mouse_scroll: f64,
     pub(crate) copy_on_select: bool,
+    pub(crate) copy_on_select_clear_selection: bool,
     pub(crate) primary_selection: bool,
     position: Position,
     follow_control: follow_control::FollowControl,
@@ -105,6 +110,7 @@ pub(crate) struct TranscriptView {
     suppressed_prompt_header: Option<prompt_header::SuppressedHeader>,
     visible: Vec<VisibleRow>,
     selection: Option<Selection>,
+    select_mode: Option<SelectMode>,
     copy_mode: Option<copy_mode::CopyMode>,
     held_reading: Option<ViewSnapshot>,
     search: Search,
@@ -123,9 +129,11 @@ pub(crate) struct TranscriptView {
 impl Default for TranscriptView {
     fn default() -> Self {
         Self {
+            image_protocol: None,
             mouse_scroll_speed: 1.0,
             pending_mouse_scroll: 0.0,
             copy_on_select: false,
+            copy_on_select_clear_selection: false,
             primary_selection: false,
             position: Position::Latest,
             follow_control: follow_control::FollowControl::default(),
@@ -142,6 +150,7 @@ impl Default for TranscriptView {
             suppressed_prompt_header: None,
             visible: Vec::new(),
             selection: None,
+            select_mode: None,
             copy_mode: None,
             held_reading: None,
             search: Search::default(),
@@ -291,10 +300,42 @@ impl TranscriptView {
             self.unseen_activity = false;
         }
         self.render_selection(buf);
+        self.render_select_cursor(buf);
         if self.history == TranscriptHistoryState::LoadingBeginning && self.is_following() {
             self.scroll(current_cells, /*rows*/ 0);
         }
         self.render_search(buf);
+    }
+
+    pub(crate) fn image_placements(&self) -> Vec<crate::transcript_image::ImagePlacement> {
+        let mut placements = Vec::new();
+        let mut y = self.area.y;
+        for rows in self.visible.chunk_by(|a, b| a.index == b.index) {
+            let entry_y = y;
+            y += rows.len() as u16;
+            let visible = &rows[0];
+            let Some(image) = visible.layout.visible_image() else {
+                continue;
+            };
+            let image_start = visible.layout.text_row_count();
+            let skip = image_start.saturating_sub(visible.row);
+            if skip >= rows.len() {
+                continue;
+            }
+            let area = Rect::new(
+                self.area.x + self.area.width.saturating_sub(image.columns) / 2,
+                entry_y + skip as u16,
+                image.columns,
+                (rows.len() - skip) as u16,
+            );
+            placements.push(crate::transcript_image::ImagePlacement {
+                image: Arc::clone(image),
+                area,
+                first_row: visible.row.saturating_sub(image_start),
+                file: None,
+            });
+        }
+        placements
     }
 
     pub(crate) fn sync_live_tail(
@@ -358,6 +399,7 @@ impl TranscriptView {
             return;
         }
         self.selection = None;
+        self.select_mode = None;
         self.copy_mode = None;
         self.release_live_reading();
         self.cache.clear();
@@ -375,7 +417,10 @@ impl TranscriptView {
     }
 
     pub(crate) fn has_active_interaction(&self) -> bool {
-        self.selection.is_some() || self.search.is_active() || self.is_activity_focused()
+        self.select_mode.is_some()
+            || self.selection.is_some()
+            || self.search.is_active()
+            || self.is_activity_focused()
     }
 
     pub(crate) fn is_detailed(&self) -> bool {
@@ -383,7 +428,7 @@ impl TranscriptView {
     }
 
     pub(crate) fn is_following(&self) -> bool {
-        self.selection.is_none() && self.position == Position::Latest
+        self.select_mode.is_none() && self.selection.is_none() && self.position == Position::Latest
     }
 
     /// Hold the current reading position until every older page has arrived.
@@ -404,6 +449,7 @@ impl TranscriptView {
         self.cancel_beginning();
         self.position = Position::Latest;
         self.selection = None;
+        self.select_mode = None;
         self.copy_mode = None;
         self.release_live_reading();
         self.unseen_activity = false;

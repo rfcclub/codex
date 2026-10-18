@@ -31,6 +31,9 @@ pub(crate) struct ActiveTurn {
     pub(crate) task: Option<RunningTask>,
     /// The turn id that has reserved this slot while task startup awaits.
     pub(crate) starting_turn_id: Option<String>,
+    /// Present when input admission is closed; cancelled when the final batch is recorded.
+    /// Reservations that have not started still accept inputs.
+    pub(crate) finishing: Option<CancellationToken>,
     pub(crate) turn_state: Arc<Mutex<TurnState>>,
 }
 
@@ -60,6 +63,7 @@ impl Default for ActiveTurn {
         Self {
             task: None,
             starting_turn_id: None,
+            finishing: None,
             turn_state: Arc::new(Mutex::new(TurnState::default())),
         }
     }

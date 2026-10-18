@@ -2,7 +2,8 @@
 //! Stationary link clicks open on release; dragging or scrolling keeps the gesture in selection.
 //! Shift-click extends the existing selection from its original text unit.
 //! Optional automatic copying happens only when a nonempty mouse selection is released.
-//! Automatic copies retain the selection; explicit copies clear it after confirmed delivery.
+//! Automatic copies optionally clear the selection; explicit copies always clear it after
+//! confirmed delivery.
 //! Wheel input accumulates fractional rows and discards the remainder when direction reverses.
 
 use crate::key_hint::KeyBindingListExt;
@@ -19,6 +20,7 @@ use super::*;
 
 pub(crate) enum ViewAction {
     Changed,
+    ExitSelectMode,
     Copy(String),
     CopyOnSelect(String),
     PrimarySelection(String),
@@ -88,6 +90,25 @@ impl JumpTarget {
 }
 
 impl TranscriptView {
+    /// Automatic copies may deselect but still publish PRIMARY, so retain their source.
+    pub(crate) fn selection_copy(&self, action: &ViewAction) -> SelectionCopy {
+        match action {
+            ViewAction::CopyOnSelect(_) => SelectionCopy::on_select(
+                /*clipboard*/ true,
+                self.primary_selection,
+                self.copy_on_select_clear_selection,
+            ),
+            ViewAction::PrimarySelection(_) => SelectionCopy::on_select(
+                /*clipboard*/ false, /*primary*/ true, /*clear_selection*/ false,
+            ),
+            ViewAction::Changed
+            | ViewAction::ExitSelectMode
+            | ViewAction::Copy(_)
+            | ViewAction::CopyAndFollow(_)
+            | ViewAction::OpenLink(_) => SelectionCopy::EXPLICIT,
+        }
+    }
+
     /// Resolve links in the last rendered transcript, sharing geometry with click activation.
     pub(crate) fn link_at(&self, column: u16, row: u16) -> Option<String> {
         if !self.area.contains(ScreenPosition::new(column, row)) {
@@ -144,6 +165,9 @@ impl TranscriptView {
         if self.copy_mode.is_some() {
             return true;
         }
+        if self.select_mode.is_some() {
+            return true;
+        }
         if self.selection.is_some() {
             return crate::text_selection::is_copy_key(key)
                 || code == KeyCode::Esc
@@ -177,6 +201,11 @@ impl TranscriptView {
         if let Some(action) = self.handle_copy_mode_key(key, cells) {
             return Some(action);
         }
+        if self.select_mode.is_some() {
+            return self
+                .handle_select_mode_key(key, cells)
+                .or(Some(ViewAction::Changed));
+        }
         if let Some(action) = self.handle_disclosure_key(key, cells) {
             return Some(action);
         }
@@ -206,6 +235,9 @@ impl TranscriptView {
         event: MouseEvent,
         cells: &[Arc<dyn HistoryCell>],
     ) -> Option<ViewAction> {
+        if self.select_mode.is_some() {
+            return self.handle_selection_mouse(event, cells);
+        }
         self.handle_mouse_with_mode(event, cells, MouseMode::Interactive)
     }
 
